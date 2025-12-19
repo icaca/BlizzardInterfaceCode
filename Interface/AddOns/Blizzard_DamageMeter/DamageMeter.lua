@@ -79,6 +79,8 @@ function DamageMeterMixin:OnLoad()
 	self:RegisterEvent("PLAYER_LEVEL_CHANGED");
 
 	self.windowDataList = {};
+	self.sessionType = Enum.DamageMeterSessionType.Overall;
+	self.sessionID = nill;
 
 	self:InitializeWindowDataList();
 end
@@ -232,14 +234,21 @@ end
 
 function DamageMeterMixin:SetupSessionWindow(windowData, windowIndex)
 	local sessionWindow = windowData.sessionWindow or CreateFrame("FRAME", "DamageMeterSessionWindow" .. windowIndex, self, "DamageMeterSessionWindowTemplate");
+
+	if not windowData.sessionWindow then
+		windowData.sessionWindow = sessionWindow;
+	end
+
 	sessionWindow:SetDamageMeterOwner(self, windowIndex);
 	sessionWindow:SetDamageMeterType(windowData.damageMeterType);
 	sessionWindow:SetSession(windowData.sessionType, windowData.sessionID);
 	sessionWindow:SetUseClassColor(self:ShouldUseClassColor());
 	sessionWindow:SetBarHeight(self:GetBarHeight());
+	sessionWindow:SetBarSpacing(self:GetBarSpacing());
 	sessionWindow:SetTextScale(self:GetTextScale());
 	sessionWindow:SetAlpha(self:GetWindowAlpha());
 	sessionWindow:SetShowBarIcons(self:ShouldShowBarIcons());
+	sessionWindow:SetBackgroundAlpha(self:GetBackgroundAlpha());
 	sessionWindow:SetStyle(self:GetStyle());
 
 	-- Each new window should render above the previous ones.
@@ -259,18 +268,22 @@ function DamageMeterMixin:SetupSessionWindow(windowData, windowIndex)
 		sessionWindow:SetPoint("TOPLEFT", UIParent, "TOPLEFT", xOffset, yOffset);
 	end
 
-	-- Ensure that the window's position won't be saved out until it's restored from the frame
-	-- position cache, or if the player moves it. Important for the case when the player hides a
-	-- window and shows a new one that's reusing a name already in the cache.
-	sessionWindow:SetUserPlaced(false);
+	-- Only the secondary windows can be moved and resized outside of edit mode.
+	if self:CanMoveOrResizeSessionWindow(sessionWindow) then
+		sessionWindow:SetMovable(true);
+		sessionWindow:SetResizable(true);
+
+		-- Ensure that the window's position won't be saved out until it's restored from the frame
+		-- position cache, or if the player moves it. Important for the case when the player hides a
+		-- window and shows a new one that's reusing a name already in the cache.
+		sessionWindow:SetUserPlaced(false);
+	end
 
 	sessionWindow:Show();
 
 	if windowData.locked == true then
 		sessionWindow:SetLocked(true);
 	end
-
-	windowData.sessionWindow = sessionWindow;
 end
 
 function DamageMeterMixin:LoadSavedWindowDataList()
@@ -315,7 +328,8 @@ function DamageMeterMixin:ShowNewSessionWindow()
 	else
 		windowData = {
 			damageMeterType = Enum.DamageMeterType.DamageDone;
-			sessionType = Enum.DamageMeterSessionType.Overall;
+			sessionType = self:GetSessionType();
+			sessionID = self:GetSessionID();
 		};
 		table.insert(self.windowDataList, windowData );
 
@@ -389,6 +403,14 @@ function DamageMeterMixin:SetSessionWindowSessionID(sessionWindow, sessionType, 
 	SetSavedWindowData(sessionWindowIndex, windowData);
 
 	sessionWindow:SetSession(sessionType, sessionID);
+end
+
+function DamageMeterMixin:GetSessionType()
+	return self.sessionType;
+end
+
+function DamageMeterMixin:GetSessionID()
+	return self.sessionID;
 end
 
 function DamageMeterMixin:SetSessionWindowLocked(sessionWindow, locked)
@@ -497,6 +519,21 @@ function DamageMeterMixin:SetShowBarIcons(showBarIcons)
 	end
 end
 
+function DamageMeterMixin:OnBarSpacingChanged(spacing)
+	self:ForEachSessionWindow(function(sessionWindow) sessionWindow:SetBarSpacing(spacing); end);
+end
+
+function DamageMeterMixin:GetBarSpacing()
+	return self.barSpacing or DAMAGE_METER_DEFAULT_BAR_SPACING;
+end
+
+function DamageMeterMixin:SetBarSpacing(spacing)
+	if self.barSpacing ~= spacing then
+		self.barSpacing = spacing;
+		self:OnBarSpacingChanged(spacing);
+	end
+end
+
 function DamageMeterMixin:OnStyleChanged(style)
 	self:ForEachSessionWindow(function(sessionWindow) sessionWindow:SetStyle(style); end);
 end
@@ -510,4 +547,27 @@ function DamageMeterMixin:SetStyle(style)
 		self.style = style;
 		self:OnStyleChanged(style);
 	end
+end
+
+function DamageMeterMixin:OnBackgroundAlphaChanged(alpha)
+	self:ForEachSessionWindow(function(sessionWindow) sessionWindow:SetBackgroundAlpha(alpha); end);
+end
+
+function DamageMeterMixin:GetBackgroundAlpha()
+	return self.backgroundAlpha or 1;
+end
+
+function DamageMeterMixin:SetBackgroundAlpha(alpha)
+	if not ApproximatelyEqual(self:GetBackgroundAlpha(), alpha) then
+		self.backgroundAlpha = alpha;
+		self:OnBackgroundAlphaChanged(alpha);
+	end
+end
+
+function DamageMeterMixin:GetBackgroundTransparency()
+	return self:GetBackgroundAlpha() / DAMAGE_METER_TRANSPARENCY_TO_ALPHA_MULTIPLIER;
+end
+
+function DamageMeterMixin:SetBackgroundTransparency(transparency)
+	return self:SetBackgroundAlpha(transparency * DAMAGE_METER_TRANSPARENCY_TO_ALPHA_MULTIPLIER);
 end

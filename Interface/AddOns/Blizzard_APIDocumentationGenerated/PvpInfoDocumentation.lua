@@ -3,6 +3,7 @@ local PvpInfo =
 	Name = "PvpInfo",
 	Type = "System",
 	Namespace = "C_PvP",
+	Environment = "All",
 
 	Functions =
 	{
@@ -25,25 +26,7 @@ local PvpInfo =
 			},
 		},
 		{
-			Name = "CanDisplayDamage",
-			Type = "Function",
-
-			Returns =
-			{
-				{ Name = "canDisplay", Type = "bool", Nilable = false },
-			},
-		},
-		{
 			Name = "CanDisplayDeaths",
-			Type = "Function",
-
-			Returns =
-			{
-				{ Name = "canDisplay", Type = "bool", Nilable = false },
-			},
-		},
-		{
-			Name = "CanDisplayHealing",
 			Type = "Function",
 
 			Returns =
@@ -61,21 +44,22 @@ local PvpInfo =
 			},
 		},
 		{
-			Name = "CanDisplayKillingBlows",
-			Type = "Function",
-
-			Returns =
-			{
-				{ Name = "canDisplay", Type = "bool", Nilable = false },
-			},
-		},
-		{
 			Name = "CanPlayerUseRatedPVPUI",
 			Type = "Function",
 
 			Returns =
 			{
 				{ Name = "canUse", Type = "bool", Nilable = false },
+				{ Name = "failureReason", Type = "string", Nilable = false },
+			},
+		},
+		{
+			Name = "CanPlayerUseTrainingGroundsUI",
+			Type = "Function",
+
+			Returns =
+			{
+				{ Name = "canUseTrainingGroundsUI", Type = "bool", Nilable = false },
 				{ Name = "failureReason", Type = "string", Nilable = false },
 			},
 		},
@@ -587,6 +571,19 @@ local PvpInfo =
 			},
 		},
 		{
+			Name = "GetRandomTrainingGroundRewards",
+			Type = "Function",
+
+			Returns =
+			{
+				{ Name = "honor", Type = "number", Nilable = false },
+				{ Name = "experience", Type = "number", Nilable = false },
+				{ Name = "itemRewards", Type = "table", InnerType = "BattlefieldItemReward", Nilable = true },
+				{ Name = "currencyRewards", Type = "table", InnerType = "BattlefieldCurrencyReward", Nilable = true },
+				{ Name = "roleShortageBonus", Type = "RoleShortageReward", Nilable = true },
+			},
+		},
+		{
 			Name = "GetRatedBGRewards",
 			Type = "Function",
 
@@ -816,6 +813,15 @@ local PvpInfo =
 			Returns =
 			{
 				{ Name = "hasStarted", Type = "bool", Nilable = false },
+			},
+		},
+		{
+			Name = "HasRandomTrainingGroundWinToday",
+			Type = "Function",
+
+			Returns =
+			{
+				{ Name = "hasRandomTrainingGroundWinToday", Type = "bool", Nilable = false },
 			},
 		},
 		{

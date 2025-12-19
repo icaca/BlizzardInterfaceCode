@@ -3,6 +3,7 @@ local SpellBook =
 	Name = "SpellBook",
 	Type = "System",
 	Namespace = "C_SpellBook",
+	Environment = "All",
 
 	Functions =
 	{
@@ -158,7 +159,7 @@ local SpellBook =
 		{
 			Name = "GetSpellBookItemCastCount",
 			Type = "Function",
-			SecretWhenCooldownsRestricted = true,
+			SecretWhenSpellBookItemCooldownRestricted = true,
 			SecretArguments = "AllowedWhenUntainted",
 			Documentation = { "Returns number of times a SpellBookItem can be cast, typically based on availability of things like required reagent items; Always returns 0 if item is not found or is not a spell" },
 
@@ -174,10 +175,28 @@ local SpellBook =
 			},
 		},
 		{
+			Name = "GetSpellBookItemChargeDuration",
+			Type = "Function",
+			MayReturnNothing = true,
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns a duration object describing the active recharge time for a spellbook item." },
+
+			Arguments =
+			{
+				{ Name = "spellBookItemSlotIndex", Type = "luaIndex", Nilable = false },
+				{ Name = "spellBookItemSpellBank", Type = "SpellBookSpellBank", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "duration", Type = "LuaDurationObject", Nilable = false },
+			},
+		},
+		{
 			Name = "GetSpellBookItemCharges",
 			Type = "Function",
 			MayReturnNothing = true,
-			SecretWhenCooldownsRestricted = true,
+			SecretWhenSpellBookItemCooldownRestricted = true,
 			SecretArguments = "AllowedWhenUntainted",
 			Documentation = { "Returns a table of info about the charges of a charge-accumulating SpellBookItem; May return nil if item is not found or is not charge-based" },
 
@@ -196,7 +215,7 @@ local SpellBook =
 			Name = "GetSpellBookItemCooldown",
 			Type = "Function",
 			MayReturnNothing = true,
-			SecretWhenCooldownsRestricted = true,
+			SecretWhenSpellBookItemCooldownRestricted = true,
 			SecretArguments = "AllowedWhenUntainted",
 			Documentation = { "Returns nil if item doesn't exist or if this kind of item doesn't display cooldowns (ex: future or offspec spells)" },
 
@@ -209,6 +228,24 @@ local SpellBook =
 			Returns =
 			{
 				{ Name = "spellCooldownInfo", Type = "SpellCooldownInfo", Nilable = false },
+			},
+		},
+		{
+			Name = "GetSpellBookItemCooldownDuration",
+			Type = "Function",
+			MayReturnNothing = true,
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns a duration object describing the active cooldown duration for a spellbook item." },
+
+			Arguments =
+			{
+				{ Name = "spellBookItemSlotIndex", Type = "luaIndex", Nilable = false },
+				{ Name = "spellBookItemSpellBank", Type = "SpellBookSpellBank", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "duration", Type = "LuaDurationObject", Nilable = false },
 			},
 		},
 		{
@@ -284,7 +321,7 @@ local SpellBook =
 			Name = "GetSpellBookItemLossOfControlCooldown",
 			Type = "Function",
 			MayReturnNothing = true,
-			SecretWhenCooldownsRestricted = true,
+			SecretWhenSpellBookItemCooldownRestricted = true,
 			SecretArguments = "AllowedWhenUntainted",
 			Documentation = { "Returns nil if item doesn't exist or if this kind of item doesn't display cooldowns (ex: future or offspec spells)" },
 
@@ -298,6 +335,24 @@ local SpellBook =
 			{
 				{ Name = "startTime", Type = "number", Nilable = false },
 				{ Name = "duration", Type = "number", Nilable = false },
+			},
+		},
+		{
+			Name = "GetSpellBookItemLossOfControlCooldownDuration",
+			Type = "Function",
+			MayReturnNothing = true,
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns a duration object describing the active loss of control cooldown duration for a spellbook item." },
+
+			Arguments =
+			{
+				{ Name = "spellBookItemSlotIndex", Type = "luaIndex", Nilable = false },
+				{ Name = "spellBookItemSpellBank", Type = "SpellBookSpellBank", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "duration", Type = "LuaDurationObject", Nilable = false },
 			},
 		},
 		{
@@ -858,20 +913,6 @@ local SpellBook =
 			Type = "Event",
 			LiteralName = "STOP_AUTOREPEAT_SPELL",
 			SynchronousEvent = true,
-		},
-		{
-			Name = "UnitSpellcastSent",
-			Type = "Event",
-			LiteralName = "UNIT_SPELLCAST_SENT",
-			SecretWhenSpellCastRestricted = true,
-			SynchronousEvent = true,
-			Payload =
-			{
-				{ Name = "unit", Type = "cstring", Nilable = false },
-				{ Name = "target", Type = "cstring", Nilable = false },
-				{ Name = "castGUID", Type = "WOWGUID", Nilable = false },
-				{ Name = "spellID", Type = "number", Nilable = false },
-			},
 		},
 		{
 			Name = "UpdateShapeshiftCooldown",

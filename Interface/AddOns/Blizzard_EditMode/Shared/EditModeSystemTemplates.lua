@@ -485,6 +485,10 @@ function EditModeSystemMixin:GetSettingValue(setting, useRawValue)
 		return 0;
 	end
 
+	if not self:HasSetting(setting) then
+		return 0;
+	end
+
 	local compositeNumberValue = self:GetCompositeNumberSettingValue(setting, useRawValue);
 	if compositeNumberValue ~= nil then
 		return compositeNumberValue;
@@ -1424,12 +1428,7 @@ function EditModeUnitFrameSystemMixin:UpdateSystemSettingViewRaidSize()
 end
 
 function EditModeUnitFrameSystemMixin:UpdateCompactRaidFrameContainerSetting(...)
-	-- args are interleaved "name1", callback1, "name2", callback2, ... format.
-	for i = 1, select("#", ...), 2 do
-		local name = select(i, ...);
-		local callback = select(i + 1, ...);
-		CompactRaidFrameContainer:ApplyToFrames(name, callback);
-	end
+	CompactRaidFrameContainer:ApplyMultipleToFrames(...);
 
 	if self.systemIndex == Enum.EditModeUnitFrameSystemIndices.Raid then
 		EditModeManagerFrame:UpdateRaidContainerFlow();
@@ -1440,7 +1439,6 @@ end
 
 function EditModeUnitFrameSystemMixin:UpdateSystemSettingFrameWidth()
 	self:UpdateCompactRaidFrameContainerSetting(
-		"normal", DefaultCompactUnitFrameSetup,
 		"mini", DefaultCompactMiniFrameSetup,
 		"normal", CompactUnitFrame_UpdateAll,
 		"group", CompactRaidGroup_UpdateBorder
@@ -1449,7 +1447,6 @@ end
 
 function EditModeUnitFrameSystemMixin:UpdateSystemSettingFrameHeight()
 	self:UpdateCompactRaidFrameContainerSetting(
-		"normal", DefaultCompactUnitFrameSetup,
 		"mini", DefaultCompactMiniFrameSetup,
 		"normal", CompactUnitFrame_UpdateAll,
 		"group", CompactRaidGroup_UpdateBorder
@@ -1462,18 +1459,12 @@ end
 
 function EditModeUnitFrameSystemMixin:UpdateSystemSettingAuraOrganizationType()
 	-- New setting, not sure this one is right...
-	self:UpdateCompactRaidFrameContainerSetting(
-		"normal", DefaultCompactUnitFrameSetup,
-		"normal", CompactUnitFrame_UpdateAll
-	);
+	self:UpdateCompactRaidFrameContainerSetting("normal", CompactUnitFrame_UpdateAll);
 end
 
 function EditModeUnitFrameSystemMixin:UpdateSystemSettingIconSize()
 	-- New setting, not sure this one is right...
-	self:UpdateCompactRaidFrameContainerSetting(
-		"normal", DefaultCompactUnitFrameSetup,
-		"normal", CompactUnitFrame_UpdateAll
-	);
+	self:UpdateCompactRaidFrameContainerSetting("normal", CompactUnitFrame_UpdateAll);
 end
 
 function EditModeUnitFrameSystemMixin:UpdateSystemSettingOpacity()
@@ -2030,6 +2021,11 @@ function EditModeAuraFrameSystemMixin:UpdateSystemSettingOpacity()
 	self:SetAlpha(opacitySetting / 100);
 end
 
+function EditModeAuraFrameSystemMixin:UpdateSystemSettingShowDispelType()
+	self.AuraContainer.showDispelType = self:GetSettingValueBool(Enum.EditModeAuraFrameSetting.ShowDispelType);
+	C_UnitAuras.TriggerPrivateAuraShowDispelType(self.AuraContainer.showDispelType);
+end
+
 function EditModeAuraFrameSystemMixin:UpdateSystemSetting(setting, entireSystemUpdate)
 	EditModeSystemMixin.UpdateSystemSetting(self, setting, entireSystemUpdate);
 
@@ -2055,6 +2051,9 @@ function EditModeAuraFrameSystemMixin:UpdateSystemSetting(setting, entireSystemU
 			self:UpdateSystemSettingVisibleSetting();
 		elseif setting == Enum.EditModeAuraFrameSetting.Opacity then
 			self:UpdateSystemSettingOpacity();
+		elseif setting == Enum.EditModeAuraFrameSetting.ShowDispelType then
+			self:UpdateSystemSettingShowDispelType();
+			self:UpdateAuraButtons();
 		end
 	end
 
@@ -2938,7 +2937,7 @@ function EditModeEncounterEventsSystemMixin:UpdateSystemSettingOverallSize()
 	-- Implement in a derived system frame mixin to process setting changes.
 end
 
-function EditModeEncounterEventsSystemMixin:UpdateSystemSettingBackground()
+function EditModeEncounterEventsSystemMixin:UpdateSystemSettingBackgroundTransparency()
 	-- Implement in a derived system frame mixin to process setting changes.
 end
 
@@ -2978,8 +2977,8 @@ function EditModeEncounterEventsSystemMixin:UpdateSystemSetting(setting, entireS
 		self:UpdateSystemSettingIconSize();
 	elseif setting == Enum.EditModeEncounterEventsSetting.OverallSize and self:HasSetting(Enum.EditModeEncounterEventsSetting.OverallSize) then
 		self:UpdateSystemSettingOverallSize();
-	elseif setting == Enum.EditModeEncounterEventsSetting.Background and self:HasSetting(Enum.EditModeEncounterEventsSetting.Background) then
-		self:UpdateSystemSettingBackground();
+	elseif setting == Enum.EditModeEncounterEventsSetting.BackgroundTransparency and self:HasSetting(Enum.EditModeEncounterEventsSetting.BackgroundTransparency) then
+		self:UpdateSystemSettingBackgroundTransparency();
 	elseif setting == Enum.EditModeEncounterEventsSetting.Transparency and self:HasSetting(Enum.EditModeEncounterEventsSetting.Transparency) then
 		self:UpdateSystemSettingTransparency();
 	elseif setting == Enum.EditModeEncounterEventsSetting.Visibility and self:HasSetting(Enum.EditModeEncounterEventsSetting.Visibility) then
@@ -3248,6 +3247,15 @@ function EditModeDamageMeterSystemMixin:ShouldShowSetting(setting)
 		return false;
 	end
 
+	--[[
+	-- FullBackground style removed, and since the BG always shows the transparency setting is always applicable.
+	if setting == Enum.EditModeDamageMeterSetting.BackgroundTransparency then
+		-- Art assets for the Bordered style don't support adjusting transparency
+		-- of the background at present.
+		return not self:DoesSettingValueEqual(Enum.EditModeDamageMeterSetting.Style, Enum.DamageMeterStyle.Bordered);
+	end
+	--]]
+
 	return true;
 end
 
@@ -3281,16 +3289,13 @@ function EditModeDamageMeterSystemMixin:UpdateSystemSettingBarHeight()
 end
 
 function EditModeDamageMeterSystemMixin:UpdateSystemSettingPadding()
-	-- NYI
+	local barSpacing = self:GetSettingValue(Enum.EditModeDamageMeterSetting.Padding);
+	self:SetBarSpacing(barSpacing);
 end
 
 function EditModeDamageMeterSystemMixin:UpdateSystemSettingTransparency()
 	local transparency = self:GetSettingValue(Enum.EditModeDamageMeterSetting.Transparency);
 	self:SetWindowTransparency(transparency);
-end
-
-function EditModeDamageMeterSystemMixin:UpdateSystemSettingLockScroll()
-	-- NYI
 end
 
 function EditModeDamageMeterSystemMixin:UpdateSystemSettingShowSpecIcon()
@@ -3306,6 +3311,11 @@ end
 function EditModeDamageMeterSystemMixin:UpdateSystemSettingTextSize()
 	local textSize = self:GetSettingValue(Enum.EditModeDamageMeterSetting.TextSize);
 	self:SetTextSize(textSize);
+end
+
+function EditModeDamageMeterSystemMixin:UpdateSystemSettingBackgroundTransparency()
+	local backgroundTransparency = self:GetSettingValue(Enum.EditModeDamageMeterSetting.BackgroundTransparency);
+	self:SetBackgroundTransparency(backgroundTransparency);
 end
 
 function EditModeDamageMeterSystemMixin:UpdateSystemSetting(setting, entireSystemUpdate)
@@ -3331,14 +3341,14 @@ function EditModeDamageMeterSystemMixin:UpdateSystemSetting(setting, entireSyste
 		self:UpdateSystemSettingPadding();
 	elseif setting == Enum.EditModeDamageMeterSetting.Transparency and self:HasSetting(Enum.EditModeDamageMeterSetting.Transparency) then
 		self:UpdateSystemSettingTransparency();
-	elseif setting == Enum.EditModeDamageMeterSetting.LockScroll and self:HasSetting(Enum.EditModeDamageMeterSetting.LockScroll) then
-		self:UpdateSystemSettingLockScroll();
 	elseif setting == Enum.EditModeDamageMeterSetting.ShowSpecIcon and self:HasSetting(Enum.EditModeDamageMeterSetting.ShowSpecIcon) then
 		self:UpdateSystemSettingShowSpecIcon();
 	elseif setting == Enum.EditModeDamageMeterSetting.ShowClassColor and self:HasSetting(Enum.EditModeDamageMeterSetting.ShowClassColor) then
 		self:UpdateSystemSettingShowClassColor();
 	elseif setting == Enum.EditModeDamageMeterSetting.TextSize and self:HasSetting(Enum.EditModeDamageMeterSetting.TextSize) then
 		self:UpdateSystemSettingTextSize();
+	elseif setting == Enum.EditModeDamageMeterSetting.BackgroundTransparency and self:HasSetting(Enum.EditModeDamageMeterSetting.BackgroundTransparency) then
+		self:UpdateSystemSettingBackgroundTransparency();
 	end
 
 	if not entireSystemUpdate then

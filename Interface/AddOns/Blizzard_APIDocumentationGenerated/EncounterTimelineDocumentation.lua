@@ -3,6 +3,7 @@ local EncounterTimeline =
 	Name = "EncounterTimeline",
 	Type = "System",
 	Namespace = "C_EncounterTimeline",
+	Environment = "All",
 
 	Functions =
 	{
@@ -74,6 +75,22 @@ local EncounterTimeline =
 			Returns =
 			{
 				{ Name = "currentTime", Type = "DurationSeconds", Nilable = false },
+			},
+		},
+		{
+			Name = "GetEventCountBySource",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns the number of present events in the timeline by their source type." },
+
+			Arguments =
+			{
+				{ Name = "source", Type = "EncounterTimelineEventSource", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "count", Type = "number", Nilable = false },
 			},
 		},
 		{
@@ -227,6 +244,16 @@ local EncounterTimeline =
 			Returns =
 			{
 				{ Name = "hasPausedEvents", Type = "bool", Nilable = false },
+			},
+		},
+		{
+			Name = "HasVisibleEvents",
+			Type = "Function",
+			Documentation = { "Returns true if the timeline contains any events that are on visible tracks." },
+
+			Returns =
+			{
+				{ Name = "hasVisibleEvents", Type = "bool", Nilable = false },
 			},
 		},
 		{

@@ -122,26 +122,18 @@ function HousingDashboardHouseInfoMixin:OnEvent(event, ...)
 	elseif ( event == "INITIATIVE_TASKS_TRACKED_UPDATED" ) then
 		if self.ContentFrame:GetTab() == self.ContentFrame.endeavorTabID then
 			self.ContentFrame.InitiativesFrame:RefreshInitiativeTab();
-			local initiativeTasksTracked = C_NeighborhoodInitiative.GetTrackedInitiativeTasks();
-			local trackedTaskIDs = initiativeTasksTracked.trackedIDs;
-			local excludeCollapsed = false;
-			local dataProvider = self.ContentFrame.InitiativesFrame.InitiativeSetFrame.InitiativeTasks.TaskList:GetDataProvider();
-				if davaProvider then
-				dataProvider:ForEach(function(elementData)
-				local data = elementData:GetData();
-				data.tracked = tContains(trackedTaskIDs, data.ID);
-					end, excludeCollapsed);
-				self.ContentFrame.InitiativesFrame.InitiativeSetFrame.InitiativeTasks.TaskList:ForEachFrame(function(frame, elementData)
-					frame:UpdateTracked();
-				end);
-				end
-				
+			self.ContentFrame.InitiativesFrame:RefreshTrackedTasks();
 		end
-
 	end
 end
 
 function HousingDashboardHouseInfoMixin:OnHouseListUpdated(houseInfoList)
+	-- Don't bother thrashing everything if nothing in the list has changed
+	-- Which is likely since we re-request this list on every OnShow
+	if self.playerHouseList and tCompare(self.playerHouseList, houseInfoList, 2) then
+		return;
+	end
+
 	self.playerHouseList = houseInfoList;
 
 	self.ContentFrame.InitiativesFrame:OnHouseListUpdated(houseInfoList)
@@ -165,10 +157,21 @@ function HousingDashboardHouseInfoMixin:OnHouseListUpdated(houseInfoList)
 end
 
 function HousingDashboardHouseInfoMixin:RefreshHouseDropdown(houseInfoList)
+	local oldSelectedHouseID = self.selectedHouseID;
 	self.selectedHouseID = 1;
+
+	if oldSelectedHouseID then
+		local newSelectedHouseInfo = houseInfoList[self.selectedHouseID];
+		-- If we had something previously selected, and it still exists in the updated list, maintain that selection
+		if self.selectedHouseInfo and self.selectedHouseInfo.houseGUID == newSelectedHouseInfo.houseGUID then
+			self.selectedHouseID = oldSelectedHouseID;
+		end
+	end
 
 	local function OnHouseSelected(houseInfoID)
 		self.ContentFrame.InitiativesFrame:OnHouseSelected(houseInfoID);
+		self.selectedHouseID = houseInfoID;
+		self.selectedHouseInfo = self.playerHouseList[houseInfoID];
 		self.ContentFrame.HouseUpgradeFrame:OnHouseSelected(houseInfoID);
 	end
 
@@ -183,7 +186,6 @@ function HousingDashboardHouseInfoMixin:RefreshHouseDropdown(houseInfoList)
 		end;
 
 		local function SetSelected(houseInfoID)
-			self.selectedHouseID = houseInfoID;
 			OnHouseSelected(houseInfoID);
 		end;
 
@@ -192,7 +194,8 @@ function HousingDashboardHouseInfoMixin:RefreshHouseDropdown(houseInfoList)
 			rootDescription:CreateRadio(houseInfo.houseName, IsSelected, SetSelected, houseInfoID);
 		end
 	end);
-	OnHouseSelected(1);
+
+	OnHouseSelected(self.selectedHouseID);
 end
 
 function HousingDashboardHouseInfoMixin:OnHouseFinderButtonClicked()
@@ -233,6 +236,12 @@ function HousingDashboardHouseInfoContentFrameMixin:UpdateTabs()
 	self.TabSystem:SetTabShown(self.endeavorTabID, endeavorTabAvailable);
 	self.TabSystem:SetTabEnabled(self.endeavorTabID, C_NeighborhoodInitiative.IsInitiativeEnabled(), HOUSING_ENDEAVORS_DISABLED);
 
+	local playerMeetsReqLevel = C_NeighborhoodInitiative.PlayerMeetsRequiredLevel();
+	if not playerMeetsReqLevel then
+		local reqLevel = C_NeighborhoodInitiative.GetRequiredLevel();
+		self.TabSystem:SetTabEnabled(self.endeavorTabID, playerMeetsReqLevel, HOUSING_ENDEAVORS_MIN_LEVEL:format(reqLevel));
+	end
+
 	local currentTab = self:GetTab();
 	if not currentTab or not self:IsTabAvailable(currentTab) then
 		self:SetToDefaultAvailableTab();
@@ -269,6 +278,9 @@ end
 InitiativesTabMixin = {};
 
 function InitiativesTabMixin:OnLoad()
+	self.thresholdFrames = {};
+	self.thresholdMax = 0;
+
 	self:SetupTaskList();
 	self:SetupActivityLog();
 end
@@ -282,6 +294,9 @@ function InitiativesTabMixin:OnHide()
 
 	if spinner and spinner:IsShown() then
 		spinner:Hide();
+	end
+	if self.targetValue then
+		self:SetCurrentPoints(self.targetValue);
 	end
 end
 
@@ -317,6 +332,16 @@ function InitiativesTabMixin:RefreshInitiativeTab()
 				self.InitiativeSetFrame.InitiativeName:SetText(self.currentInitiative.title);
 				self.InitiativeSetFrame.InitiativeDescription:SetText(self.currentInitiative.description);
 
+				local isInNeighborhoodGroup = C_NeighborhoodInitiative.IsPlayerInNeighborhoodGroup();
+
+				if isInNeighborhoodGroup then
+					self.InitiativeSetFrame.NeighborhoodGroupText:SetTextColor(NORMAL_FONT_COLOR:GetRGB());
+					self.InitiativeSetFrame.NeighborhoodGroupText:SetText(BONUS_FAVOR_IN_NEIGHBORHOOD_PARTY);
+				else
+					self.InitiativeSetFrame.NeighborhoodGroupText:SetTextColor(HIGHLIGHT_FONT_COLOR:GetRGB());
+					self.InitiativeSetFrame.NeighborhoodGroupText:SetText(BONUS_FAVOR_NOT_IN_NEIGHBORHOOD_PARTY);
+				end
+
 				if self.currentInitiative.duration and self.currentInitiative.duration > 0 then
 					local timeLeftStr = SecondsToTime(self.currentInitiative.duration, false, true, 1); -- noSeconds, notAbbreviated, maxCount -> Show seconds, don't abbreviate units, only show one (largest) unit
 					self.InitiativeSetFrame.InitiativeTimer.TimeRemaining:SetText(HOUSING_DASHBOARD_TIME_REMAINING:format(timeLeftStr));
@@ -343,6 +368,28 @@ function InitiativesTabMixin:RefreshInitiativeTab()
 		self.NoInitiativeSetFrame:Show();
 		self.InitiativeSetFrame:Hide();
 	end
+
+	local lastPoints = GetCVarNumberOrDefault("endeavorInitiativesLastPoints");
+	self:SetCurrentPoints(lastPoints);
+	if self.currentInitiative.currentProgress ~= lastPoints then
+		self.targetValue = self.currentInitiative.currentProgress;
+	end
+end
+
+function InitiativesTabMixin:RefreshTrackedTasks()
+	local initiativeTasksTracked = C_NeighborhoodInitiative.GetTrackedInitiativeTasks();
+	local trackedTaskIDs = initiativeTasksTracked.trackedIDs;
+	local excludeCollapsed = false;
+	local dataProvider = self.InitiativeSetFrame.InitiativeTasks.TaskList:GetDataProvider();
+	if davaProvider then
+		dataProvider:ForEach(function(elementData)
+		local data = elementData:GetData();
+		data.tracked = tContains(trackedTaskIDs, data.ID);
+			end, excludeCollapsed);
+		self.InitiativeSetFrame.InitiativeTasks.TaskList:ForEachFrame(function(frame, elementData)
+			frame:UpdateTracked();
+		end);
+	end
 end
 
 function InitiativesTabMixin:SetProgressBarThresholds()
@@ -351,6 +398,8 @@ function InitiativesTabMixin:SetProgressBarThresholds()
 
 	self.InitiativeSetFrame.ProgressBar:SetMinMaxValues(0, maxProgressValue);
 	self.InitiativeSetFrame.ProgressBar:SetValue(self.currentInitiative.currentProgress);
+	self.thresholdMax = maxProgressValue;
+
 
 	if self.InitiativeSetFrame.ProgressBar:GetValue() > 0 then
 		self.InitiativeSetFrame.ProgressBar.BarEnd:Show();
@@ -359,10 +408,6 @@ function InitiativesTabMixin:SetProgressBarThresholds()
 	else
 		self.InitiativeSetFrame.ProgressBar.BarEnd:Hide();
 		self.InitiativeSetFrame.ProgressBar.BarEnd:ClearAllPoints();
-	end
-
-	if not self.thresholdFrames then
-		self.thresholdFrames = {};
 	end
 
 	local currentThreshold = 1;
@@ -386,7 +431,7 @@ function InitiativesTabMixin:SetProgressBarThresholds()
 		if i < maxNumRewards then
 			thresholdFrame:SetPoint("CENTER", self.InitiativeSetFrame.ProgressBar, "BOTTOMLEFT", xOffset, 0);
 		elseif i == maxNumRewards then
-			thresholdFrame:SetPoint("CENTER", self.InitiativeSetFrame.ProgressBar, "BOTTOMRIGHT", 2, 11);
+			thresholdFrame:SetPoint("CENTER", self.InitiativeSetFrame.ProgressBar, "BOTTOMRIGHT", 20, 9);
 		end
 
 		local isFinalReward = template == "ProgressThresholdLargeTemplate";
@@ -398,7 +443,7 @@ end
 function InitiativesTabMixin:UpdateBackground(selectedHouseInfo)
 	if selectedHouseInfo and selectedHouseInfo.neighborhoodGUID then
 		local atlas = "housing-dashboard-bg-" .. C_Housing.GetNeighborhoodTextureSuffix(selectedHouseInfo.neighborhoodGUID);
-		self.InitiativeSetFrame.InitiativesBG:SetAtlas(atlas);
+		self.InitiativesArt.InitiativesBG:SetAtlas(atlas);
 	end
 end
 
@@ -429,16 +474,9 @@ function InitiativesTabMixin:SetupTaskList()
 
 		local function TaskInitializer(button)
 			if data.taskType == Enum.NeighborhoodInitiativeTaskType.RepeatableInfinite then
-				button.RepeatableIcon:Show();
-				button.Title:ClearAllPoints();
-				button.Title:SetPoint("LEFT", button.RepeatableIcon, "RIGHT", 4, -9);
 				button.CollapseIcon:Hide();
 				button.CollapseIconAlphaAdd:Hide();
 			elseif data.taskType == Enum.NeighborhoodInitiativeTaskType.RepeatableFinite then
-				button.RepeatableIcon:Hide();
-				button.Title:ClearAllPoints();
-				button.Title:SetPoint("LEFT", button, "LEFT", 50, 1);
-
 				if data.topLevel then
 					button.CollapseIcon:Show();
 					button.CollapseIconAlphaAdd:Show();
@@ -448,9 +486,6 @@ function InitiativesTabMixin:SetupTaskList()
 					button.CollapseIconAlphaAdd:Hide();
 				end
 			else
-				button.RepeatableIcon:Hide();
-				button.Title:ClearAllPoints();
-				button.Title:SetPoint("LEFT", button, "LEFT", 50, 0);
 				button.CollapseIcon:Hide();
 				button.CollapseIconAlphaAdd:Hide();
 			end
@@ -472,6 +507,8 @@ function InitiativesTabMixin:SetupTaskList()
 				button.Checkmark:Hide();
 				button.BGAlphaAdd:Hide();
 			end
+
+			button:UpdateTracked();
 		end
 
 		local function SubtaskInitializer(button)
@@ -495,7 +532,6 @@ function InitiativesTabMixin:SetupActivityLog()
 
 	view:SetElementFactory(function(factory, data)
 		local function Initializer(frame)
-			frame.ActivityXP:SetText(data.amount);
 			frame.ActivityMessage:SetText(HOUSING_DASHBOARD_ACTIVITY_LOG_ENTRY:format(data.playerName, data.taskName));
 		end
 
@@ -595,6 +631,7 @@ function InitiativesTabMixin:RefreshActivityLog()
 
 		self.InitiativeSetFrame.InitiativeActivity.ActivityLog:SetEdgeFadeLength(SCROLL_BOX_EDGE_FADE_LENGTH);
 		self.InitiativeSetFrame.InitiativeActivity.ActivityLog:SetDataProvider(dataProvider, ScrollBoxConstants.RetainScrollPosition);
+		self.InitiativeSetFrame.InitiativeActivity.NoActivityText:SetShown(#self.initiativeActivityLog.taskActivity == 0);
 	end
 end
 
@@ -615,6 +652,45 @@ function InitiativesTabMixin:ScrollToInitiativeTaskID(taskID)
 	end
 end
 
+function InitiativesTabMixin:OnUpdate()
+	if not self.targetValue then
+		return;
+	end
+
+	local curValue = self.InitiativeSetFrame.ProgressBar:GetValue();
+	local barValue = math.min(curValue + math.floor(self.thresholdMax * 0.005), self.targetValue);
+	if barValue >= self.targetValue then
+		if self.loopSoundHandle then
+			StopSound(self.loopSoundHandle);
+			self.loopSoundHandle = nil;
+		end
+		PlaySound(SOUNDKIT.HOUSING_ENDEAVORS_REWARD_BAR_STOP);
+		self.InitiativeSetFrame.ProgressBar.BarEnd.Sparkles:Play();
+	else
+		if not self.loopSoundHandle then
+			local _, soundHandle = PlaySound(SOUNDKIT.HOUSING_ENDEAVORS_REWARD_BAR_LOOP);
+			self.loopSoundHandle = soundHandle;
+		end
+	end
+
+	self:SetCurrentPoints(barValue);
+end
+
+function InitiativesTabMixin:SetCurrentPoints(barValue)
+	self.InitiativeSetFrame.ProgressBar:SetValue(barValue);
+
+	for _, thresholdFrame in pairs(self.thresholdFrames) do
+		thresholdFrame:SetCurrentPoints(barValue);
+	end
+
+	self.InitiativeSetFrame.ProgressBar.TextContainer.ProgressText:SetFormattedText(ENDEAVOR_INITIATIVES_PROGRESS_TEXT, barValue, self.thresholdMax);
+	self.InitiativeSetFrame.ProgressBar.BarEnd:SetShown(barValue > 0);
+
+	if self.targetValue and barValue >= self.targetValue then
+		SetCVar("endeavorInitiativesLastPoints", self.targetValue);
+		self.targetValue = nil;
+	end
+end
 
 ---------------------Initiatives Tab: Task Button-------------------------------
 InitiativeTaskButtonMixin = {};
@@ -631,7 +707,7 @@ end
 
 function InitiativeTaskButtonMixin:UpdateTracked()
 	local data = self:GetData();
-	-- TODO UI: Add tracking check mark WOW12-33999
+	self.TrackingCheckmark:SetShown(data and data.tracked);
 end
 
 function InitiativeTaskButtonMixin:OnEnter()
@@ -712,10 +788,15 @@ function InitiativeTaskButtonMixin:ShowTooltip()
 	end
 
 	GameTooltip_SetTitle(GameTooltip, data.taskName, NORMAL_FONT_COLOR, true);
+
+	if data.taskType == Enum.NeighborhoodInitiativeTaskType.RepeatableInfinite then
+		GameTooltip_AddNormalLine(GameTooltip, HOUSING_ENDEAVOR_REPEATABLE_TASK)
+	end
+
 	GameTooltip_AddBlankLineToTooltip(GameTooltip);
 
 	if #data.description > 0 then
-		GameTooltip:AddLine(data.description, 1, 1, 1, true);
+		GameTooltip_AddHighlightLine(GameTooltip, data.description)
 		GameTooltip_AddBlankLineToTooltip(GameTooltip);
 	end
 
@@ -739,6 +820,8 @@ function InitiativeTaskButtonMixin:ShowTooltip()
 		GameTooltip_AddBlankLineToTooltip(GameTooltip);
 		GameTooltip_AddInstructionLine(GameTooltip, MONTHLY_ACTIVITIES_TRACK);
 	end
+
+	EventRegistry:TriggerEvent("HousingDashboardInitiativeTask.MouseOver", data);
 
 	GameTooltip:Show();
 end
@@ -766,23 +849,42 @@ function ProgressThresholdMixin:Setup(thresholdInfo, currentThresholdProgress, i
 		end
 	end
 
-	if currentThresholdProgress  >= thresholdInfo.requiredContributionAmount then
-		if not isFinalReward then
-			self.LineIncomplete:Hide();
-			self.LineComplete:Show();
-			self.Reward.IconBorder:SetAtlas("housing-dashboard-fillbar-pip-complete");
-			self.Reward.IconBorder:Show();
-		end
-		self.Reward.EarnedCheckmark:Show();
-	else
-		if not isFinalReward then
-			self.LineIncomplete:Show();
-			self.LineComplete:Hide();
+	self.thresholdInfo = thresholdInfo
+	self.isFinalReward = isFinalReward
+	self.Reward.EarnedCheckmark:SetAlpha(1);
+	self.Reward.CheckmarkFlipbook:SetAlpha(0);
+end
+
+function ProgressThresholdMixin:SetCurrentPoints(points)
+
+	local aboveThreshold = points >= self.thresholdInfo.requiredContributionAmount;
+
+	if not self.isFinalReward then
+		self.LineIncomplete:SetShown(not aboveThreshold);
+		self.LineComplete:SetShown(aboveThreshold);
+		if not aboveThreshold then
 			self.Reward.IconBorder:SetAtlas("housing-dashboard-fillbar-pip-incomplete");
-			self.Reward.IconBorder:Show();
+		else
+			self.Reward.IconBorder:SetAtlas("housing-dashboard-fillbar-pip-complete");
 		end
-		self.Reward.EarnedCheckmark:Hide();
 	end
+
+	local initialSet = self.aboveThreshold == nil;
+	if self.aboveThreshold == aboveThreshold then
+		return;
+	end
+
+	self.aboveThreshold = aboveThreshold;
+
+	if not initialSet and aboveThreshold then
+		self.Reward.ThresholdReached:Play();
+		if not self.isFinalReward then
+			PlaySound(SOUNDKIT.HOUSING_ENDEAVORS_REWARD_TIER_COMPLETE);
+		else
+			PlaySound(SOUNDKIT.HOUSING_ENDEAVORS_REWARD_BAR_COMPLETE);
+		end
+	end
+	self.Reward.EarnedCheckmark:SetShown(aboveThreshold);
 end
 
 ---------------------Initiatives Tab: Active Neighborhood Switcher -------------------------------

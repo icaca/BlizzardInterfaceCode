@@ -4,6 +4,9 @@ CVarCallbackRegistry:SetCVarCachable(NamePlateConstants.SIZE_CVAR);
 CVarCallbackRegistry:SetCVarCachable(NamePlateConstants.SHOW_FRIENDLY_NPCS_CVAR);
 CVarCallbackRegistry:SetCVarCachable(NamePlateConstants.THREAT_DISPLAY_CVAR);
 CVarCallbackRegistry:SetCVarCachable(NamePlateConstants.DEBUFF_PADDING_CVAR);
+CVarCallbackRegistry:SetCVarCachable(NamePlateConstants.SHOW_ONLY_NAME_FOR_FRIENDLY_PLAYER_UNITS_CVAR);
+
+local CAST_BAR_SPARK_EXTRA_HEIGHT = 8;
 
 -- Displays the info about the unit to which the nameplate is attached.
 -- This mixin is a child of a frame that has been created in code and is using NamePlateBaseMixin.
@@ -36,6 +39,9 @@ function NamePlateUnitFrameMixin:OnLoad()
 
 	-- Nothing in the nameplate is clickable. Hit testing is done at the C++ level using the location of HitTestFrame.
 	self:EnableMouse(false);
+
+	-- Prevent arbitrary modifcations of the frame used for hit testing.
+	self.HitTestFrame:SetForbidden(true);
 
 	self.HealthBarsContainer.healthBar:SetUnitNameFontString(self.name);
 
@@ -123,6 +129,7 @@ function NamePlateUnitFrameMixin:OnUnitSet()
 	CVarCallbackRegistry:RegisterCallback(NamePlateConstants.SHOW_FRIENDLY_NPCS_CVAR, self.UpdateWidgetsOnlyMode, self);
 	CVarCallbackRegistry:RegisterCallback(NamePlateConstants.THREAT_DISPLAY_CVAR, self.UpdateThreatDisplay, self);
 	CVarCallbackRegistry:RegisterCallback(NamePlateConstants.DEBUFF_PADDING_CVAR, self.UpdateAnchors, self);
+	CVarCallbackRegistry:RegisterCallback(NamePlateConstants.SHOW_ONLY_NAME_FOR_FRIENDLY_PLAYER_UNITS_CVAR, self.UpdateShowOnlyName, self);
 
 	self:RegisterUnitEvent("UNIT_AURA", self.unit);
 	self:RegisterUnitEvent("UNIT_FACTION", self.unit);
@@ -145,6 +152,7 @@ function NamePlateUnitFrameMixin:OnUnitSet()
 	self:UpdateAggroHighlight();
 	self:UpdateBehindCamera();
 	self:UpdateWidgetsOnlyMode();
+	self:UpdateShowOnlyName();
 
 	self.AurasFrame:SetActive(not C_Commentator.IsSpectating());
 	self.AurasFrame:SetUnit(self.unit);
@@ -162,6 +170,7 @@ function NamePlateUnitFrameMixin:OnUnitCleared()
 	CVarCallbackRegistry:UnregisterCallback(NamePlateConstants.SHOW_FRIENDLY_NPCS_CVAR, self);
 	CVarCallbackRegistry:UnregisterCallback(NamePlateConstants.THREAT_DISPLAY_CVAR, self);
 	CVarCallbackRegistry:UnregisterCallback(NamePlateConstants.DEBUFF_PADDING_CVAR, self);
+	CVarCallbackRegistry:UnregisterCallback(NamePlateConstants.SHOW_ONLY_NAME_FOR_FRIENDLY_PLAYER_UNITS_CVAR, self);
 
 	self:UnregisterEvent("UNIT_AURA");
 	self:UnregisterEvent("UNIT_FACTION");
@@ -178,6 +187,7 @@ function NamePlateUnitFrameMixin:OnUnitCleared()
 	self.isFocus = nil;
 	self.isTarget = nil;
 	self.widgetsOnlyMode = nil;
+	self.showOnlyName = nil;
 
 	self.aggroHighlightShown = nil;
 	self.isBehindCamera = nil;
@@ -191,21 +201,38 @@ function NamePlateUnitFrameMixin:ApplyFrameOptions(setupOptions, frameOptions)
 	local customOptions = self.customOptions;
 
 	self.castBar:SetHeight(setupOptions.castBarHeight);
+	self.castBar.Spark:SetHeight(setupOptions.castBarHeight + CAST_BAR_SPARK_EXTRA_HEIGHT);
 
-	local fontName, _fontSize, fontFlags = self.castBar.Text:GetFont();
-	self.castBar.Text:SetFont(fontName, setupOptions.castBarFontHeight, fontFlags);
-	self.castBar.CastTargetNameText:SetFont(fontName, setupOptions.castBarFontHeight, fontFlags);
+	self.castBar.Text:SetTextHeight(setupOptions.castBarFontHeight);
+	self.castBar.CastTargetNameText:SetTextHeight(setupOptions.castBarFontHeight);
 
-	fontName, _fontSize, fontFlags = self.name:GetFont();
-	self.name:SetFont(fontName, setupOptions.healthBarFontHeight, fontFlags);
-	self.HealthBarsContainer.healthBar.Text:SetFont(fontName, setupOptions.healthBarFontHeight, fontFlags);
-	self.HealthBarsContainer.healthBar.LeftText:SetFont(fontName, setupOptions.healthBarFontHeight, fontFlags);
-	self.HealthBarsContainer.healthBar.RightText:SetFont(fontName, setupOptions.healthBarFontHeight, fontFlags);
+	if setupOptions.unitNameInsideHealthBar then
+		self.name:SetFontObject("SystemFont_NamePlate_Outlined");
+		self.HealthBarsContainer.healthBar.Text:SetFontObject("SystemFont_NamePlate_Outlined");
+		self.HealthBarsContainer.healthBar.LeftText:SetFontObject("SystemFont_NamePlate_Outlined");
+		self.HealthBarsContainer.healthBar.RightText:SetFontObject("SystemFont_NamePlate_Outlined");
 
-	self.ClassificationFrame.maxScale = setupOptions.maxClassificationScale;
+		-- Clickable region defined by both name and health bar.
+		self.HitTestFrame:SetPoint("TOPLEFT", self.HealthBarsContainer.healthBar);
+		self.HitTestFrame:SetPoint("BOTTOMRIGHT", self.HealthBarsContainer.healthBar);
+	else
+		-- Outlined font is harder to read when text is outside the health bar.
+		self.name:SetFontObject("SystemFont_NamePlate");
+		self.HealthBarsContainer.healthBar.Text:SetFontObject("SystemFont_NamePlate");
+		self.HealthBarsContainer.healthBar.LeftText:SetFontObject("SystemFont_NamePlate");
+		self.HealthBarsContainer.healthBar.RightText:SetFontObject("SystemFont_NamePlate");
+
+		-- Clickable region is just the health bar.
+		self.HitTestFrame:SetPoint("TOPLEFT", self.name);
+		self.HitTestFrame:SetPoint("BOTTOMRIGHT", self.HealthBarsContainer.healthBar);
+	end
+
+	self.name:SetTextHeight(setupOptions.healthBarFontHeight);
+	self.HealthBarsContainer.healthBar.Text:SetTextHeight(setupOptions.healthBarFontHeight);
+	self.HealthBarsContainer.healthBar.LeftText:SetTextHeight(setupOptions.healthBarFontHeight);
+	self.HealthBarsContainer.healthBar.RightText:SetTextHeight(setupOptions.healthBarFontHeight);
+
 	self.ClassificationFrame:SetScale(setupOptions.classificationScale or 1.0);
-
-	self.PlayerLevelDiffFrame.maxScale = setupOptions.maxClassificationScale;
 	self.PlayerLevelDiffFrame:SetScale(setupOptions.classificationScale or 1.0);
 
 	CompactUnitFrame_SetOptionTable(self, frameOptions);
@@ -234,6 +261,8 @@ function NamePlateUnitFrameMixin:UpdateIsPlayer()
 	end
 
 	self.isPlayer = isPlayer;
+
+	self:UpdateShowOnlyName();
 
 	self.AurasFrame:SetIsPlayer(self.isPlayer);
 	self.HealthBarsContainer.healthBar:SetIsPlayer(self.isPlayer);
@@ -264,6 +293,7 @@ function NamePlateUnitFrameMixin:UpdateIsFriend()
 	self.isFriend = isFriend;
 
 	self:UpdateThreatDisplay();
+	self:UpdateShowOnlyName();
 
 	self.AurasFrame:SetIsFriend(self.isFriend);
 end
@@ -528,17 +558,46 @@ function NamePlateUnitFrameMixin:UpdateWidgetsOnlyMode()
 	end
 end
 
+function NamePlateUnitFrameMixin:IsShowOnlyName()
+	return self.showOnlyName == true;
+end
+
+function NamePlateUnitFrameMixin:UpdateShowOnlyName()
+	local showOnlyName = false;
+
+	if self:IsFriend() and self:IsPlayer() and CVarCallbackRegistry:GetCVarValueBool(NamePlateConstants.SHOW_ONLY_NAME_FOR_FRIENDLY_PLAYER_UNITS_CVAR) then
+		showOnlyName = true;
+	end
+
+	if self.showOnlyName == showOnlyName then
+		return;
+	end
+
+	self.showOnlyName = showOnlyName;
+
+	self.HealthBarsContainer.healthBar:SetShowOnlyName(showOnlyName);
+	self.castBar:SetShowOnlyName(showOnlyName);
+	self.AurasFrame:SetShowOnlyName(showOnlyName);
+	self.ClassificationFrame:SetShowOnlyName(showOnlyName);
+	self.RaidTargetFrame:SetShowOnlyName(showOnlyName);
+
+	self:UpdateAnchors();
+end
+
 function NamePlateUnitFrameMixin:UpdateThreatDisplay()
 	if self:IsFriend() == false then
 		self.displayAggroFlash = CVarCallbackRegistry:GetCVarBitfieldIndex(NamePlateConstants.THREAT_DISPLAY_CVAR, Enum.NamePlateThreatDisplay.Flash);
 		self.displayAggroHighlight = CVarCallbackRegistry:GetCVarBitfieldIndex(NamePlateConstants.THREAT_DISPLAY_CVAR, Enum.NamePlateThreatDisplay.Progressive);
+		self.displayThreatHealthBarColor = CVarCallbackRegistry:GetCVarBitfieldIndex(NamePlateConstants.THREAT_DISPLAY_CVAR, Enum.NamePlateThreatDisplay.HealthBarColor);
 	else
 		self.displayAggroFlash = false;
 		self.displayAggroHighlight = false;
+		self.displayThreatHealthBarColor = false;
 	end
 
 	CompactUnitFrame_UpdateAggroFlash(self);
 	CompactUnitFrame_UpdateAggroHighlight(self);
+	CompactUnitFrame_UpdateHealthColor(self);
 end
 
 function NamePlateUnitFrameMixin:ShouldShowName()
@@ -603,20 +662,34 @@ function NamePlateUnitFrameMixin:UpdateAnchors()
 		healthBarLeftText:ClearAllPoints();
 		healthBarRightText:ClearAllPoints();
 
-		-- Unit name needs to truncate if the health bar text is populated.
-		-- Left Text (percentage) is intentionally to the right of Right Text (numeric value)
-		if setupOptions.unitNameInsideHealthBar == true then
-			PixelUtil.SetPoint(healthBarLeftText, "RIGHT", self.HealthBarsContainer.healthBar, "RIGHT", -4, 0);
-			PixelUtil.SetPoint(healthBarRightText, "RIGHT", healthBarLeftText, "LEFT", -2, 0);
-			PixelUtil.SetPoint(healthBarText, "RIGHT", healthBarRightText, "LEFT", 2, 0);
-			PixelUtil.SetPoint(self.name, "LEFT", self.HealthBarsContainer, "LEFT", 4, 0);
-			PixelUtil.SetPoint(self.name, "RIGHT", healthBarText, "LEFT", -2, 0);
+		if self:IsShowOnlyName() then
+			self.name:SetJustifyH("CENTER");
+
+			if setupOptions.unitNameInsideHealthBar == true then
+				PixelUtil.SetPoint(self.name, "LEFT", self.HealthBarsContainer, "LEFT", 4, 0);
+				PixelUtil.SetPoint(self.name, "RIGHT", self.HealthBarsContainer, "RIGHT", -4, 0);
+			else
+				PixelUtil.SetPoint(self.name, "BOTTOMLEFT", self.HealthBarsContainer, "TOPLEFT", 4, 2);
+				PixelUtil.SetPoint(self.name, "BOTTOMRIGHT", self.HealthBarsContainer, "TOPRIGHT", -4, 2);
+			end
 		else
-			PixelUtil.SetPoint(healthBarLeftText, "BOTTOMRIGHT", self.HealthBarsContainer.healthBar, "TOPRIGHT", -4, 2);
-			PixelUtil.SetPoint(healthBarRightText, "BOTTOMRIGHT", healthBarLeftText, "BOTTOMLEFT", -2, 0);
-			PixelUtil.SetPoint(healthBarText, "BOTTOMRIGHT", healthBarRightText, "BOTTOMLEFT", 2, 0);
-			PixelUtil.SetPoint(self.name, "BOTTOMLEFT", self.HealthBarsContainer, "TOPLEFT", 4, 2);
-			PixelUtil.SetPoint(self.name, "BOTTOMRIGHT", healthBarText, "BOTTOMLEFT", -2, 0);
+			self.name:SetJustifyH("LEFT");
+
+			-- Unit name needs to truncate if the health bar text is populated.
+			-- Left Text (percentage) is intentionally to the right of Right Text (numeric value)
+			if setupOptions.unitNameInsideHealthBar == true then
+				PixelUtil.SetPoint(healthBarLeftText, "RIGHT", self.HealthBarsContainer.healthBar, "RIGHT", -4, 0);
+				PixelUtil.SetPoint(healthBarRightText, "RIGHT", healthBarLeftText, "LEFT", -2, 0);
+				PixelUtil.SetPoint(healthBarText, "RIGHT", healthBarRightText, "LEFT", 2, 0);
+				PixelUtil.SetPoint(self.name, "LEFT", self.HealthBarsContainer, "LEFT", 4, 0);
+				PixelUtil.SetPoint(self.name, "RIGHT", healthBarText, "LEFT", -2, 0);
+			else
+				PixelUtil.SetPoint(healthBarLeftText, "BOTTOMRIGHT", self.HealthBarsContainer.healthBar, "TOPRIGHT", -4, 2);
+				PixelUtil.SetPoint(healthBarRightText, "BOTTOMRIGHT", healthBarLeftText, "BOTTOMLEFT", -2, 0);
+				PixelUtil.SetPoint(healthBarText, "BOTTOMRIGHT", healthBarRightText, "BOTTOMLEFT", 2, 0);
+				PixelUtil.SetPoint(self.name, "BOTTOMLEFT", self.HealthBarsContainer, "TOPLEFT", 4, 2);
+				PixelUtil.SetPoint(self.name, "BOTTOMRIGHT", healthBarText, "BOTTOMLEFT", -2, 0);
+			end
 		end
 
 		PixelUtil.SetHeight(self.name, self.name:GetLineHeight());
@@ -657,6 +730,8 @@ function NamePlateUnitFrameMixin:SetExplicitValues(explicitValues)
 	self.explicitIsFriend = explicitValues.isFriend;
 	self.explicitIsMinion = explicitValues.isMinion;
 	self.explicitIsMinusMob = explicitValues.isMinusMob;
+	self.explicitThreatSituation = explicitValues.threatSituation;
+	self.explicitAggroFlash = explicitValues.aggroFlash;
 
 	self:UpdateIsPlayer();
 	self:UpdateIsFriend();

@@ -1,6 +1,6 @@
 local DAMAGE_METER_CATEGORIES = {
-	{ name = DAMAGE_METER_CATEGORY_DAMAGE; types = {Enum.DamageMeterType.DamageDone, Enum.DamageMeterType.Dps, Enum.DamageMeterType.DamageTaken}; },
-	{ name = DAMAGE_METER_CATEGORY_HEALING; types = {Enum.DamageMeterType.HealingDone, Enum.DamageMeterType.Hps, Enum.DamageMeterType.Absorbs}; },
+	{ name = DAMAGE_METER_CATEGORY_DAMAGE; types = {Enum.DamageMeterType.DamageDone, Enum.DamageMeterType.Dps, Enum.DamageMeterType.DamageTaken, Enum.DamageMeterType.AvoidableDamageTaken}; },
+	{ name = DAMAGE_METER_CATEGORY_HEALING; types = {Enum.DamageMeterType.HealingDone, Enum.DamageMeterType.Hps }; },
 	{ name = DAMAGE_METER_CATEGORY_ACTIONS; types = {Enum.DamageMeterType.Interrupts, Enum.DamageMeterType.Dispels}; },
 };
 
@@ -18,6 +18,7 @@ local DAMAGE_METER_TYPE_NAMES = {
 	[Enum.DamageMeterType.Interrupts] = DAMAGE_METER_TYPE_INTERRUPTS,
 	[Enum.DamageMeterType.Dispels] = DAMAGE_METER_TYPE_DISPELS,
 	[Enum.DamageMeterType.DamageTaken] = DAMAGE_METER_TYPE_DAMAGE_TAKEN,
+	[Enum.DamageMeterType.AvoidableDamageTaken] = DAMAGE_METER_TYPE_AVOIDABLE_DAMAGE_TAKEN,
 };
 
 local function GetDamageMeterTypeName(damageMeterType)
@@ -35,6 +36,17 @@ local function GetDamageMeterSessionShortName(sessionType, sessionID)
 	end
 
 	return sessionID or "?";
+end
+
+-- Some languages can't fit their short name into a single character.
+local function HasLongSessionTypeShortNames()
+	for _sessionType, shortName in pairs(DAMAGE_METER_SESSION_TYPE_SHORT_NAMES) do
+		if shortName and #shortName > 1 then
+			return true;
+		end
+	end
+
+	return false;
 end
 
 local EDIT_MODE_SESSION =
@@ -57,6 +69,7 @@ DamageMeterSessionWindowMixin = {};
 local DamageMeterSessionWindowMixinEvents = {
 	"DAMAGE_METER_COMBAT_SESSION_UPDATED",
 	"DAMAGE_METER_RESET",
+	"DAMAGE_METER_CURRENT_SESSION_UPDATED",
 };
 
 function DamageMeterSessionWindowMixin:GetDamageMeterTypeDropdown()
@@ -103,6 +116,14 @@ function DamageMeterSessionWindowMixin:GetResizeButton()
 	return self.ResizeButton;
 end
 
+function DamageMeterSessionWindowMixin:GetBackground()
+	return self.Background;
+end
+
+function DamageMeterSessionWindowMixin:GetNotActiveFontString()
+	return self.NotActive;
+end
+
 function DamageMeterSessionWindowMixin:OnLoad()
 	self:RegisterForDrag("LeftButton");
 
@@ -134,6 +155,10 @@ function DamageMeterSessionWindowMixin:OnEvent(event, ...)
 		end
 	elseif event == "DAMAGE_METER_RESET" then
 		self:Refresh(ScrollBoxConstants.DiscardScrollPosition);
+	elseif event == "DAMAGE_METER_CURRENT_SESSION_UPDATED" then
+		if self:GetSessionType() == Enum.DamageMeterSessionType.Current then
+			self:Refresh(ScrollBoxConstants.DiscardScrollPosition);
+		end
 	end
 end
 
@@ -141,22 +166,34 @@ function DamageMeterSessionWindowMixin:OnEnter()
 	-- Handle showing the ResizeButton under the correct conditions.
 	self:SetScript("OnUpdate", function()
 		local resizeButton = self:GetResizeButton();
-		local shouldResizeButtonBeShown = (self:IsMouseOver() or resizeButton:IsMouseOver() or self:IsResizing()) and self:CanMoveOrResize();
-		local shouldChangeBackgroundOpacity = true;
+		local isMouseOver = self:IsMouseOver() or resizeButton:IsMouseOver() or self:IsResizing();
+		local shouldResizeButtonBeShown = self:CanMoveOrResize();
+		local shouldChangeBackgroundOpacity = not self:DoesCurrentStyleUseBackground();
 
-		if shouldResizeButtonBeShown and resizeButton:GetAlpha() == 0 then
-			self.ShowResizeButton:Play();
+		if isMouseOver and self.playedMouseOverAnims ~= true then
+			self.playedMouseOverAnims = true;
+
 			self.EmphasizeScrollBar:Play();
+
+			if shouldResizeButtonBeShown then
+				self.ShowResizeButton:Play();
+			end
 
 			if shouldChangeBackgroundOpacity then
 				self.ShowBackground:Play();
 			end
-		elseif not shouldResizeButtonBeShown and resizeButton:GetAlpha() > 0 then
+		elseif not isMouseOver then
+			self.playedMouseOverAnims = false;
+
 			self:SetScript("OnUpdate", nil);
 
 			local reverse = true;
-			self.ShowResizeButton:Play(reverse);
+
 			self.EmphasizeScrollBar:Play(reverse);
+
+			if shouldResizeButtonBeShown then
+				self.ShowResizeButton:Play(reverse);
+			end
 
 			if shouldChangeBackgroundOpacity then
 				self.ShowBackground:Play(reverse);
@@ -184,13 +221,25 @@ function DamageMeterSessionWindowMixin:SetupEntry(frame, elementData)
 	frame:SetTextScale(self:GetTextScale());
 	frame:SetShowBarIcons(self:ShouldShowBarIcons());
 	frame:SetStyle(self:GetStyle());
-	frame:RegisterForClicks("RightButtonUp");
+	frame:SetBackgroundAlpha(self:GetBackgroundAlpha());
+
+	-- For the existing implementation, clicks need to happen on mouse down because rebuilding the data
+	-- provider with every change ends up hiding all frames and clearing their button state, meaning a
+	-- mouse up might not happen.
+	frame:RegisterForClicks("LeftButtonDown", "RightButtonDown");
 
 	frame:SetScript("OnClick", function(button, mouseButtonName)
-		if mouseButtonName == "RightButton" then
+		if mouseButtonName == "LeftButton" or mouseButtonName == "RightButton" then
 			self:ShowSourceWindow(elementData);
 		end
 	end);
+end
+
+function DamageMeterSessionWindowMixin:InitializeScrollBoxPadding(view)
+	local topPadding, bottomPadding, leftPadding, rightPadding = 0, 0, 0, 0;
+	local elementSpacing = self:GetBarSpacing();
+
+	view:SetPadding(topPadding, bottomPadding, leftPadding, rightPadding, elementSpacing);
 end
 
 function DamageMeterSessionWindowMixin:InitializeScrollBox()
@@ -199,10 +248,7 @@ function DamageMeterSessionWindowMixin:InitializeScrollBox()
 		self:SetupEntry(frame, elementData);
 	end);
 
-	local topPadding, bottomPadding, leftPadding, rightPadding = 0, 0, 0, 0;
-	local elementSpacing = 4;
-	view:SetPadding(topPadding, bottomPadding, leftPadding, rightPadding, elementSpacing);
-
+	self:InitializeScrollBoxPadding(view);
 	ScrollUtil.InitScrollBoxListWithScrollBar(self:GetScrollBox(), self:GetScrollBar(), view);
 
 	local topLeftX, topLeftY = 20, -5;
@@ -247,6 +293,14 @@ function DamageMeterSessionWindowMixin:InitializeDamageMeterTypeDropdown()
 end
 
 function DamageMeterSessionWindowMixin:InitializeSessionDropdown()
+	local sessionDropdown = self:GetSessionDropdown();
+
+	if HasLongSessionTypeShortNames() then
+		sessionDropdown:SetWidth(sessionDropdown.longShortNameWidth);
+	else
+		sessionDropdown:SetWidth(sessionDropdown.shortShortNameWidth);
+	end
+
 	local function IsSelected(option)
 		return self:GetSessionType() == option.type and self:GetSessionID() == option.sessionID;
 	end
@@ -256,14 +310,18 @@ function DamageMeterSessionWindowMixin:InitializeSessionDropdown()
 		self:GetDamageMeterOwner():SetSessionWindowSessionID(self, option.type, option.sessionID);
 	end
 
-	self:GetSessionDropdown():SetupMenu(function(owner, rootDescription)
+	sessionDropdown:SetupMenu(function(owner, rootDescription)
 		rootDescription:SetTag("MENU_DAMAGE_METER_SESSIONS");
 
 		local availableCombatSessions = C_DamageMeter.GetAvailableCombatSessions();
 		for _i, availableCombatSession in ipairs(availableCombatSessions) do
 			local sessionData = {type = nil; sessionID = availableCombatSession.sessionID; };
+			local sessionName = availableCombatSession.name;
+			if not availableCombatSession.name or availableCombatSession.name == "" then
+				sessionName = DAMAGE_METER_COMBAT_NUMBER:format(availableCombatSession.sessionID);
+			end
 
-			rootDescription:CreateRadio("PH - Unnamed Segment", IsSelected, SetSelected, sessionData);
+			rootDescription:CreateRadio(sessionName, IsSelected, SetSelected, sessionData);
 		end
 
 		rootDescription:CreateDivider();
@@ -490,6 +548,14 @@ function DamageMeterSessionWindowMixin:EnsureSourceWindowUpToDate()
 	self:GetSourceWindow():Refresh(ScrollBoxConstants.RetainScrollPosition);
 end
 
+function DamageMeterSessionWindowMixin:UpdateNotActiveText()
+	if self:GetDamageMeterType() == Enum.DamageMeterType.AvoidableDamageTaken and self:GetScrollBox():GetDataProvider():IsEmpty() then
+		self:GetNotActiveFontString():SetText(DAMAGE_METER_AVOIDABLE_DAMAGE_NOT_ACTIVE);
+	else
+		self:GetNotActiveFontString():SetText(nil);
+	end
+end
+
 function DamageMeterSessionWindowMixin:OnScrollBoxScroll()
 	self:EnsureLocalPlayerPresent();
 end
@@ -499,6 +565,7 @@ function DamageMeterSessionWindowMixin:Refresh(retainScrollPosition)
 
 	self:EnsureLocalPlayerPresent();
 	self:EnsureSourceWindowUpToDate();
+	self:UpdateNotActiveText();
 end
 
 function DamageMeterSessionWindowMixin:EnumerateEntryFrames()
@@ -542,7 +609,7 @@ function DamageMeterSessionWindowMixin:SetDamageMeterType(damageMeterType)
 	-- Changes to the damage meter type should always hide the source window.
 	self:HideSourceWindow();
 
-	self:Refresh(ScrollBoxConstants.RetainScrollPosition);
+	self:Refresh(ScrollBoxConstants.DiscardScrollPosition);
 end
 
 function DamageMeterSessionWindowMixin:GetDamageMeterType()
@@ -559,7 +626,7 @@ function DamageMeterSessionWindowMixin:SetSession(sessionType, sessionID)
 
 	self:GetSourceWindow():SetSession(sessionType, sessionID);
 
-	self:Refresh(ScrollBoxConstants.RetainScrollPosition);
+	self:Refresh(ScrollBoxConstants.DiscardScrollPosition);
 end
 
 function DamageMeterSessionWindowMixin:GetSessionType()
@@ -693,9 +760,27 @@ function DamageMeterSessionWindowMixin:SetShowBarIcons(showBarIcons)
 	end
 end
 
+function DamageMeterSessionWindowMixin:OnBarSpacingChanged(spacing)
+	self:GetSourceWindow():SetBarSpacing(spacing);
+	self:InitializeScrollBoxPadding(self:GetScrollBox():GetView());
+	self:Refresh(ScrollBoxConstants.RetainScrollPosition);
+end
+
+function DamageMeterSessionWindowMixin:GetBarSpacing()
+	return self.barSpacing or DAMAGE_METER_DEFAULT_BAR_SPACING;
+end
+
+function DamageMeterSessionWindowMixin:SetBarSpacing(spacing)
+	if self.barSpacing ~= spacing then
+		self.barSpacing = spacing;
+		self:OnBarSpacingChanged(spacing);
+	end
+end
+
 function DamageMeterSessionWindowMixin:OnStyleChanged(style)
 	self:ForEachEntryFrame(function(frame) frame:SetStyle(style); end);
 	self:GetSourceWindow():SetStyle(style);
+	self:UpdateBackground();
 end
 
 function DamageMeterSessionWindowMixin:GetStyle()
@@ -706,5 +791,35 @@ function DamageMeterSessionWindowMixin:SetStyle(style)
 	if self.style ~= style then
 		self.style = style;
 		self:OnStyleChanged(style);
+	end
+end
+
+function DamageMeterSessionWindowMixin:OnBackgroundAlphaChanged(alpha)
+	self:ForEachEntryFrame(function(frame) frame:SetBackgroundAlpha(alpha); end);
+	self:GetSourceWindow():SetBackgroundAlpha(alpha);
+	self:UpdateBackground();
+end
+
+function DamageMeterSessionWindowMixin:GetBackgroundAlpha()
+	return self.backgroundAlpha or 1;
+end
+
+function DamageMeterSessionWindowMixin:SetBackgroundAlpha(alpha)
+	if not ApproximatelyEqual(self:GetBackgroundAlpha(), alpha) then
+		self.backgroundAlpha = alpha;
+		self:OnBackgroundAlphaChanged(alpha);
+	end
+end
+
+function DamageMeterSessionWindowMixin:DoesCurrentStyleUseBackground()
+	-- return self:GetStyle() == Enum.DamageMeterStyle.FullBackground;
+	return true;
+end
+
+function DamageMeterSessionWindowMixin:UpdateBackground()
+	if self:DoesCurrentStyleUseBackground() then
+		self:GetBackground():SetAlpha(self:GetBackgroundAlpha());
+	else
+		self:GetBackground():SetAlpha(0);
 	end
 end

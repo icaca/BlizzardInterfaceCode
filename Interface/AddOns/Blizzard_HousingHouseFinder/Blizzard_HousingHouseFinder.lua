@@ -223,8 +223,9 @@ function HouseFinderFrameMixin:OnEvent(event, ...)
 	elseif event == "DECLINE_NEIGHBORHOOD_INVITATION_RESPONSE" then
 		local success = ...;
 		if success then
-			local nextNeighborhood = self.neighborhoodButtonPool:GetNextActive(self.pendingDeclineInviteNeighborhoodButton);
+			local nextNeighborhood = nil;
 			self.neighborhoodButtonPool:Release(self.pendingDeclineInviteNeighborhoodButton);
+			nextNeighborhood = self.neighborhoodButtonPool:GetNextActive(nextNeighborhood);
 			self:SelectNeighborhood(nextNeighborhood, true); --select new first button and request data for map
 			self.NeighborhoodListFrame.ScrollFrame.NeighborhoodList:Layout();
 		else
@@ -585,6 +586,22 @@ function HouseFinderNeighborhoodButtonMixin:OnClick()
 		self.houseFinderFrame:SelectNeighborhood(self, shouldRequestNeighborhoodData);
 		PlaySound(SOUNDKIT.HOUSING_HOUSE_FINDER_NEIGHBORHOOD_SELECT);
 	end
+end
+
+function HouseFinderNeighborhoodButtonMixin:OnMouseUp(button, upInside)
+	if upInside and button == "RightButton" then
+		local ownerType = self.neighborhoodInfo.neighborhoodOwnerType;
+		if ownerType == Enum.NeighborhoodOwnerType.Charter or ownerType == Enum.NeighborhoodOwnerType.Guild then
+			MenuUtil.CreateContextMenu(self, function(owner, rootDescription)
+				rootDescription:CreateButton(HOUSING_BULLETINBOARD_REPORT, GenerateClosure(self.ReportNeighborhood, self));
+			end);
+		end
+	end
+end
+
+function HouseFinderNeighborhoodButtonMixin:ReportNeighborhood()
+	local reportInfo = ReportInfo:CreateNeighborhoodReportInfo(Enum.ReportType.Neighborhood, self.neighborhoodInfo.neighborhoodGUID);
+	ReportFrame:InitiateReport(reportInfo, self.neighborhoodInfo.neighborhoodName); 
 end
 
 function HouseFinderNeighborhoodButtonMixin:Select()

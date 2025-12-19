@@ -3,12 +3,39 @@ local CatalogShop =
 	Name = "CatalogShop",
 	Type = "System",
 	Namespace = "C_CatalogShop",
+	Environment = "All",
 
 	Functions =
 	{
 		{
+			Name = "BulkPurchaseProducts",
+			Type = "Function",
+			HasRestrictions = true,
+			SecretArguments = "AllowedWhenUntainted",
+
+			Arguments =
+			{
+				{ Name = "productIDs", Type = "table", InnerType = "number", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "canPurchaseProducts", Type = "bool", Nilable = false },
+			},
+		},
+		{
 			Name = "CloseCatalogShopInteraction",
 			Type = "Function",
+		},
+		{
+			Name = "ConfirmHousingPurchase",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+
+			Arguments =
+			{
+				{ Name = "productIDs", Type = "table", InnerType = "number", Nilable = false },
+			},
 		},
 		{
 			Name = "GetAvailableCategoryIDs",
@@ -85,6 +112,30 @@ local CatalogShop =
 			},
 		},
 		{
+			Name = "GetFirstCategoryByProductID",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+
+			Arguments =
+			{
+				{ Name = "productID", Type = "number", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "categoryInfo", Type = "CatalogShopCategoryInfo", Nilable = true },
+			},
+		},
+		{
+			Name = "GetNewProducts",
+			Type = "Function",
+
+			Returns =
+			{
+				{ Name = "newProducts", Type = "table", InnerType = "number", Nilable = false },
+			},
+		},
+		{
 			Name = "GetProductAvailabilityTimeRemainingSecs",
 			Type = "Function",
 			SecretArguments = "AllowedWhenUntainted",
@@ -112,6 +163,21 @@ local CatalogShop =
 			Returns =
 			{
 				{ Name = "childIDs", Type = "table", InnerType = "CatalogShopBundleChildInfo", Nilable = false },
+			},
+		},
+		{
+			Name = "GetProductIDsForCategory",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+
+			Arguments =
+			{
+				{ Name = "categoryID", Type = "number", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "productIDs", Type = "table", InnerType = "number", Nilable = false },
 			},
 		},
 		{
@@ -163,6 +229,21 @@ local CatalogShop =
 			},
 		},
 		{
+			Name = "GetRefundableDecors",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+
+			Arguments =
+			{
+				{ Name = "productIDOpt", Type = "number", Nilable = true },
+			},
+
+			Returns =
+			{
+				{ Name = "refundableDecorInfos", Type = "table", InnerType = "RefundableDecorInfo", Nilable = false },
+			},
+		},
+		{
 			Name = "GetSectionIDsForCategory",
 			Type = "Function",
 			SecretArguments = "AllowedWhenUntainted",
@@ -208,6 +289,15 @@ local CatalogShop =
 			},
 		},
 		{
+			Name = "HasNewProducts",
+			Type = "Function",
+
+			Returns =
+			{
+				{ Name = "hasNewProducts", Type = "bool", Nilable = false },
+			},
+		},
+		{
 			Name = "IsShop2Enabled",
 			Type = "Function",
 
@@ -227,14 +317,17 @@ local CatalogShop =
 			},
 		},
 		{
-			Name = "OpenCatalogShopInteraction",
+			Name = "OpenCatalogShopInteractionFromHouse",
 			Type = "Function",
-			SecretArguments = "AllowedWhenUntainted",
 
-			Arguments =
+			Returns =
 			{
-				{ Name = "shouldAllowMovement", Type = "bool", Nilable = false, Default = false },
+				{ Name = "shoppingSessionUUIDStr", Type = "string", Nilable = false },
 			},
+		},
+		{
+			Name = "OpenCatalogShopInteractionFromShop",
+			Type = "Function",
 
 			Returns =
 			{
@@ -282,6 +375,10 @@ local CatalogShop =
 			},
 		},
 		{
+			Name = "RefreshRefundableDecors",
+			Type = "Function",
+		},
+		{
 			Name = "RefreshVirtualCurrencyBalance",
 			Type = "Function",
 			SecretArguments = "AllowedWhenUntainted",
@@ -291,10 +388,31 @@ local CatalogShop =
 				{ Name = "currencyCode", Type = "string", Nilable = false },
 			},
 		},
+		{
+			Name = "StartHousingVCPurchaseConfirmation",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+
+			Arguments =
+			{
+				{ Name = "productID", Type = "number", Nilable = false },
+			},
+		},
 	},
 
 	Events =
 	{
+		{
+			Name = "BulkPurchaseResultReceived",
+			Type = "Event",
+			LiteralName = "BULK_PURCHASE_RESULT_RECEIVED",
+			SynchronousEvent = true,
+			Payload =
+			{
+				{ Name = "result", Type = "BulkPurchaseResult", Nilable = false },
+				{ Name = "productResults", Type = "table", InnerType = "BulkPurchaseIndividualProductResult", Nilable = false },
+			},
+		},
 		{
 			Name = "CatalogShopAddPendingProduct",
 			Type = "Event",
@@ -378,6 +496,12 @@ local CatalogShop =
 			SynchronousEvent = true,
 		},
 		{
+			Name = "CatalogShopRefundableDecorsUpdated",
+			Type = "Event",
+			LiteralName = "CATALOG_SHOP_REFUNDABLE_DECORS_UPDATED",
+			SynchronousEvent = true,
+		},
+		{
 			Name = "CatalogShopRemovePendingProduct",
 			Type = "Event",
 			LiteralName = "CATALOG_SHOP_REMOVE_PENDING_PRODUCT",
@@ -414,6 +538,32 @@ local CatalogShop =
 				{ Name = "balance", Type = "string", Nilable = false },
 			},
 		},
+		{
+			Name = "CatalogShopVirtualCurrencyBalanceUpdateFailure",
+			Type = "Event",
+			LiteralName = "CATALOG_SHOP_VIRTUAL_CURRENCY_BALANCE_UPDATE_FAILURE",
+			SynchronousEvent = true,
+			Payload =
+			{
+				{ Name = "currencyCode", Type = "string", Nilable = false },
+			},
+		},
+		{
+			Name = "SetSeenProducts",
+			Type = "Event",
+			LiteralName = "SET_SEEN_PRODUCTS",
+			SynchronousEvent = true,
+			Payload =
+			{
+				{ Name = "productIds", Type = "table", InnerType = "number", Nilable = false },
+			},
+		},
+		{
+			Name = "ShowNewProductNotification",
+			Type = "Event",
+			LiteralName = "SHOW_NEW_PRODUCT_NOTIFICATION",
+			SynchronousEvent = true,
+		},
 	},
 
 	Tables =
@@ -425,6 +575,18 @@ local CatalogShop =
 			{
 				{ Name = "raceID", Type = "number", Nilable = false },
 				{ Name = "displayName", Type = "string", Nilable = false },
+			},
+		},
+		{
+			Name = "BulkPurchaseIndividualProductResult",
+			Type = "Structure",
+			Fields =
+			{
+				{ Name = "recordId", Type = "number", Nilable = false },
+				{ Name = "parentProductId", Type = "number", Nilable = true },
+				{ Name = "entitlementId", Type = "string", Nilable = false },
+				{ Name = "externalTransactionId", Type = "string", Nilable = false },
+				{ Name = "status", Type = "SimpleOrderStatus", Nilable = false },
 			},
 		},
 		{
@@ -446,6 +608,7 @@ local CatalogShop =
 				{ Name = "iconTexture", Type = "string", Nilable = false },
 				{ Name = "linkTag", Type = "string", Nilable = false },
 				{ Name = "isDisabled", Type = "bool", Nilable = false },
+				{ Name = "showPersistentRefundButton", Type = "bool", Nilable = false },
 			},
 		},
 		{
@@ -529,6 +692,7 @@ local CatalogShop =
 				{ Name = "numBundleDetailCards", Type = "number", Nilable = false },
 				{ Name = "isDynamicallyDiscounted", Type = "bool", Nilable = false },
 				{ Name = "shouldShowOriginalPrice", Type = "bool", Nilable = false },
+				{ Name = "wideCardBGOverrideProductURL", Type = "string", Nilable = true },
 				{ Name = "consumableQuantity", Type = "number", Nilable = true },
 			},
 		},
@@ -572,6 +736,16 @@ local CatalogShop =
 			{
 				{ Name = "amount", Type = "number", Nilable = false },
 				{ Name = "currencyCode", Type = "string", Nilable = false },
+			},
+		},
+		{
+			Name = "RefundableDecorInfo",
+			Type = "Structure",
+			Fields =
+			{
+				{ Name = "decorGUID", Type = "WOWGUID", Nilable = false },
+				{ Name = "timeRemainingSeconds", Type = "time_t", Nilable = false },
+				{ Name = "standaloneDecorProductID", Type = "number", Nilable = false },
 			},
 		},
 	},

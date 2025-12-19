@@ -17,6 +17,7 @@ NamePlateConstants =
 	SOFT_TARGET_ICON_FRIEND_CVAR = "SoftTargetIconFriend";
 	SOFT_TARGET_ICON_INTERACT_CVAR = "SoftTargetIconInteract";
 	SHOW_FRIENDLY_NPCS_CVAR = "nameplateShowFriendlyNpcs";
+	SHOW_ONLY_NAME_FOR_FRIENDLY_PLAYER_UNITS_CVAR = "nameplateShowOnlyNameForFriendlyPlayerUnits";
 
 	PREVIEW_UNIT_TOKEN = "preview";
 
@@ -34,10 +35,10 @@ NamePlateConstants =
 
 	NAME_PLATE_SCALES =
 	{
-		[Enum.NamePlateSize.Small] = { horizontal = 0.75, vertical = 0.8, classification = 1.0, aura = 0.75, aggroHighlight = 1.0},
+		[Enum.NamePlateSize.Small] = { horizontal = 0.75, vertical = 0.8, classification = 0.8, aura = 0.75, aggroHighlight = 1.0},
 		[Enum.NamePlateSize.Medium] = { horizontal = 1.0, vertical = 1.0, classification = 1.0, aura = 1.0, aggroHighlight = 1.0},
-		[Enum.NamePlateSize.Large] = { horizontal = 1.25, vertical = 1.25, classification = 1.0, aura = 1.25, aggroHighlight = 1.25 },
-		[Enum.NamePlateSize.ExtraLarge] = { horizontal = 1.4, vertical = 1.4, classification = 1.25, aura = 1.4, aggroHighlight = 1.4 },
-		[Enum.NamePlateSize.Huge] = { horizontal = 1.6, vertical = 1.6, classification = 1.25, aura = 1.6, aggroHighlight = 1.6 },
+		[Enum.NamePlateSize.Large] = { horizontal = 1.25, vertical = 1.25, classification = 1.25, aura = 1.25, aggroHighlight = 1.25 },
+		[Enum.NamePlateSize.ExtraLarge] = { horizontal = 1.4, vertical = 1.4, classification = 1.4, aura = 1.4, aggroHighlight = 1.4 },
+		[Enum.NamePlateSize.Huge] = { horizontal = 1.6, vertical = 1.6, classification = 1.6, aura = 1.6, aggroHighlight = 1.6 },
 	};
 };

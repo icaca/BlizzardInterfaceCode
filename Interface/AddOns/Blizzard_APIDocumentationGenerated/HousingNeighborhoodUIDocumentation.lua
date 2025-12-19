@@ -3,6 +3,7 @@ local HousingNeighborhoodUI =
 	Name = "HousingNeighborhoodUI",
 	Type = "System",
 	Namespace = "C_HousingNeighborhood",
+	Environment = "All",
 
 	Functions =
 	{
@@ -136,7 +137,7 @@ local HousingNeighborhoodUI =
 
 			Returns =
 			{
-				{ Name = "previousHouseIdentifier", Type = "cstring", Nilable = false },
+				{ Name = "previousHouseIdentifier", Type = "string", Nilable = false },
 			},
 		},
 		{

@@ -253,6 +253,10 @@ local forceinsecure = forceinsecure;
 -- Table of supported action functions
 local SECURE_ACTIONS = {};
 
+SECURE_ACTIONS.menu = function(self, unit, button, isKeyPress)
+	self:ExecuteAttribute("menu-function", self, unit, button, isKeyPress);
+end
+
 SECURE_ACTIONS.togglemenu = function(self, unit, button)
 	if not unit then 
 		return;
@@ -569,6 +573,27 @@ SECURE_ACTIONS.attribute =
         end
     end;
 
+SECURE_ACTIONS.raidtarget =
+	function(self, unit, button)
+		local marker = tonumber(SecureButton_GetModifiedAttribute(self, "marker", button));
+		local action = SecureButton_GetModifiedAttribute(self, "action", button) or "toggle";
+		unit = unit or "target";
+		marker = marker or 1;
+		if ( action == "set" and GetRaidTargetIndex(unit) ~= marker ) then
+			SetRaidTarget(unit, marker);
+		elseif ( action == "clear" ) then
+			SetRaidTarget(unit, 0);
+		elseif ( action == "clear-all" ) then
+			RemoveRaidTargets();
+		elseif ( action == "toggle" ) then
+			if ( GetRaidTargetIndex(unit) == marker ) then
+				SetRaidTarget(unit, 0);
+			else
+				SetRaidTarget(unit, marker);
+			end
+		end
+	end;
+
 SECURE_ACTIONS.worldmarker =
 	function(self, unit, button)
 		local marker = tonumber(SecureButton_GetModifiedAttribute(self, "marker", button));
@@ -586,6 +611,33 @@ SECURE_ACTIONS.worldmarker =
 			end
 		end
 	end;
+
+SECURE_ACTIONS.teleporthome =
+    function (self, _unit, button)
+		local neighborhoodGUID = SecureButton_GetModifiedAttribute(self, "house-neighborhood-guid", button);
+		local houseGUID = SecureButton_GetModifiedAttribute(self, "house-guid", button);
+		local plotID = tonumber(SecureButton_GetModifiedAttribute(self, "house-plot-id", button));
+
+		if neighborhoodGUID and houseGUID and plotID then
+			C_Housing.TeleportHome(neighborhoodGUID, houseGUID, plotID);
+		end
+    end;
+
+SECURE_ACTIONS.returnhome =
+    function (self, _unit, _button)
+		C_Housing.ReturnAfterVisitingHouse();
+    end;
+
+SECURE_ACTIONS.visithouse =
+    function (self, _unit, button)
+		local neighborhoodGUID = SecureButton_GetModifiedAttribute(self, "house-neighborhood-guid", button);
+		local houseGUID = SecureButton_GetModifiedAttribute(self, "house-guid", button);
+		local plotID = tonumber(SecureButton_GetModifiedAttribute(self, "house-plot-id", button));
+
+		if neighborhoodGUID and houseGUID and plotID then
+			C_Housing.VisitHouse(neighborhoodGUID, houseGUID, plotID);
+		end
+    end;
 
  SecureActionButtonMixin = {};
 
@@ -662,8 +714,9 @@ local function PerformAction(self, button, unit, actionType, down, isKeyPress)
 			handler = SecureButton_GetModifiedAttribute(self, "_"..actionType, button);
 		end
 		if not handler then
-			atRisk = false;
-			-- functions retrieved from table keys carry their own taint
+			-- There exist a few means for this lookup to return user-provided
+			-- functions that don't carry taint, so consider this to be at-risk.
+			atRisk = true;
 			handler = rawget(self, actionType);
 		end
 		if type(handler) == 'function' then
@@ -746,12 +799,17 @@ function SecureActionButton_OnClick(self, inputButton, down, isKeyPress, isSecur
 	return false;
 end
 
-function SecureUnitButton_OnLoad(self, unit, menufunc)
-    self:RegisterForClicks("AnyUp");
+function SecureUnitButton_OnLoad(self, unit, menufunc, clickArgs)
+	if clickArgs then
+		self:RegisterForClicks(unpack(clickArgs));
+	else
+		self:RegisterForClicks("AnyUp");
+	end
+
     self:SetAttribute("*type1", "target");
     self:SetAttribute("*type2", "menu");
     self:SetAttribute("unit", unit);
-    self.menu = menufunc;
+    self:SetAttribute("menu-function", menufunc);
 end
 
 function SecureUnitButton_OnClick(self, button, down)

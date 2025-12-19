@@ -2,6 +2,7 @@ local SimpleFrameAPI =
 {
 	Name = "SimpleFrameAPI",
 	Type = "ScriptObject",
+	Environment = "All",
 
 	Functions =
 	{
@@ -1028,6 +1029,19 @@ local SimpleFrameAPI =
 			Arguments =
 			{
 				{ Name = "alpha", Type = "SingleColorValue", Nilable = false },
+			},
+		},
+		{
+			Name = "SetAlphaFromBoolean",
+			Type = "Function",
+			SecretArgumentsAddAspect = { Enum.SecretAspect.Alpha },
+			SecretArguments = "AllowedWhenTainted",
+
+			Arguments =
+			{
+				{ Name = "value", Type = "bool", Nilable = false },
+				{ Name = "alphaIfTrue", Type = "SingleColorValue", Nilable = false, Default = 255 },
+				{ Name = "alphaIfFalse", Type = "SingleColorValue", Nilable = false, Default = 0 },
 			},
 		},
 		{

@@ -3,6 +3,7 @@ local EventUtils =
 	Name = "EventUtils",
 	Type = "System",
 	Namespace = "C_EventUtils",
+	Environment = "All",
 
 	Functions =
 	{
@@ -36,20 +37,10 @@ local EventUtils =
 				{ Name = "valid", Type = "bool", Nilable = false },
 			},
 		},
-		{
-			Name = "NotifySettingsLoaded",
-			Type = "Function",
-		},
 	},
 
 	Events =
 	{
-		{
-			Name = "SettingsLoaded",
-			Type = "Event",
-			LiteralName = "SETTINGS_LOADED",
-			SynchronousEvent = true,
-		},
 	},
 
 	Tables =

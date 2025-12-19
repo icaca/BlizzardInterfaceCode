@@ -21,8 +21,14 @@ local tostring = tostring;
 local tonumber = tonumber;
 local securecall = securecall;
 
+local ClearOverrideBindings = ClearOverrideBindings;
 local GetCursorPosition = GetCursorPosition;
 local InCombatLockdown = InCombatLockdown;
+local SetOverrideBinding = SetOverrideBinding;
+local SetOverrideBindingClick = SetOverrideBindingClick;
+local SetOverrideBindingItem = SetOverrideBindingItem;
+local SetOverrideBindingMacro = SetOverrideBindingMacro;
+local SetOverrideBindingSpell = SetOverrideBindingSpell;
 
 local IsFrameHandle = IsFrameHandle;
 local GetFrameHandle = GetFrameHandle;
@@ -802,9 +808,9 @@ function HANDLE:ChildUpdate(snippetid, message)
 end
 
 local function CallMethod_inner(frame, methodName, ...)
-    local method = frame[methodName];
     -- Ensure code isn't run securely
     forceinsecure();
+    local method = frame[methodName];
     if (type(method) ~= "function") then
         error("Invalid method '" .. methodName .. "'");
         return;

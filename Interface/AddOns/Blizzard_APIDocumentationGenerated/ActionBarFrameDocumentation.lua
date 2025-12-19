@@ -3,6 +3,7 @@ local ActionBarFrame =
 	Name = "ActionBar",
 	Type = "System",
 	Namespace = "C_ActionBar",
+	Environment = "All",
 
 	Functions =
 	{
@@ -116,10 +117,27 @@ local ActionBarFrame =
 			},
 		},
 		{
+			Name = "GetActionChargeDuration",
+			Type = "Function",
+			RequiresValidActionSlot = true,
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns a duration object describing the active recharge time for an action." },
+
+			Arguments =
+			{
+				{ Name = "actionID", Type = "luaIndex", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "duration", Type = "LuaDurationObject", Nilable = false },
+			},
+		},
+		{
 			Name = "GetActionCharges",
 			Type = "Function",
-			SecretWhenCooldownsRestricted = true,
 			RequiresValidActionSlot = true,
+			SecretWhenActionCooldownRestricted = true,
 			SecretArguments = "AllowedWhenUntainted",
 
 			Arguments =
@@ -135,8 +153,8 @@ local ActionBarFrame =
 		{
 			Name = "GetActionCooldown",
 			Type = "Function",
-			SecretWhenCooldownsRestricted = true,
 			RequiresValidActionSlot = true,
+			SecretWhenActionCooldownRestricted = true,
 			SecretArguments = "AllowedWhenUntainted",
 
 			Arguments =
@@ -150,10 +168,85 @@ local ActionBarFrame =
 			},
 		},
 		{
+			Name = "GetActionCooldownDuration",
+			Type = "Function",
+			RequiresValidActionSlot = true,
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns a duration object describing the active cooldown duration for an action." },
+
+			Arguments =
+			{
+				{ Name = "actionID", Type = "luaIndex", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "duration", Type = "LuaDurationObject", Nilable = false },
+			},
+		},
+		{
+			Name = "GetActionCooldownRemaining",
+			Type = "Function",
+			RequiresValidActionSlot = true,
+			SecretWhenActionCooldownRestricted = true,
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Queries the remaining duration of an action cooldown." },
+
+			Arguments =
+			{
+				{ Name = "actionID", Type = "luaIndex", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "remainingSeconds", Type = "number", Nilable = false },
+			},
+		},
+		{
+			Name = "GetActionCooldownRemainingPercent",
+			Type = "Function",
+			RequiresValidActionSlot = true,
+			SecretWhenActionCooldownRestricted = true,
+			SecretWhenCurveSecret = true,
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Queries the remaining duration of an action cooldown as a percentage, optionally evaluating it against a supplied curve." },
+
+			Arguments =
+			{
+				{ Name = "actionID", Type = "luaIndex", Nilable = false },
+				{ Name = "curve", Type = "LuaCurveObjectBase", Nilable = true },
+			},
+
+			Returns =
+			{
+				{ Name = "result", Type = "LuaCurveEvaluatedResult", Nilable = false, Documentation = { "If no curve is specified, a floating point percentage value. Else, the result of evaluating the curve with the percentage as the input." } },
+			},
+		},
+		{
+			Name = "GetActionDisplayCount",
+			Type = "Function",
+			RequiresValidActionSlot = true,
+			SecretWhenActionCooldownRestricted = true,
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Depending on the action type, return a string that is either the use count or number of charges. If value is beyond the display count parameter, returns the replacementString (defaults to '*')." },
+
+			Arguments =
+			{
+				{ Name = "actionID", Type = "luaIndex", Nilable = false },
+				{ Name = "maxDisplayCount", Type = "number", Nilable = false, Default = 9999 },
+				{ Name = "replacementString", Type = "cstring", Nilable = false, Default = "*" },
+			},
+
+			Returns =
+			{
+				{ Name = "displayCount", Type = "string", Nilable = false },
+			},
+		},
+		{
 			Name = "GetActionLossOfControlCooldown",
 			Type = "Function",
-			SecretWhenCooldownsRestricted = true,
 			RequiresValidActionSlot = true,
+			SecretWhenActionCooldownRestricted = true,
 			SecretArguments = "AllowedWhenUntainted",
 
 			Arguments =
@@ -165,6 +258,23 @@ local ActionBarFrame =
 			{
 				{ Name = "startTime", Type = "number", Nilable = false },
 				{ Name = "duration", Type = "number", Nilable = false },
+			},
+		},
+		{
+			Name = "GetActionLossOfControlCooldownDuration",
+			Type = "Function",
+			RequiresValidActionSlot = true,
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns a duration object describing the active loss of control cooldown duration for an action." },
+
+			Arguments =
+			{
+				{ Name = "actionID", Type = "luaIndex", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "duration", Type = "LuaDurationObject", Nilable = false },
 			},
 		},
 		{
@@ -203,8 +313,8 @@ local ActionBarFrame =
 		{
 			Name = "GetActionUseCount",
 			Type = "Function",
-			SecretWhenCooldownsRestricted = true,
 			RequiresValidActionSlot = true,
+			SecretWhenActionCooldownRestricted = true,
 			SecretArguments = "AllowedWhenUntainted",
 
 			Arguments =
@@ -991,39 +1101,6 @@ local ActionBarFrame =
 
 	Tables =
 	{
-		{
-			Name = "ActionBarChargeInfo",
-			Type = "Structure",
-			Fields =
-			{
-				{ Name = "currentCharges", Type = "number", Nilable = false, Documentation = { "Number of charges currently available" } },
-				{ Name = "maxCharges", Type = "number", Nilable = false, Documentation = { "Max number of charges that can be accumulated" } },
-				{ Name = "cooldownStartTime", Type = "number", Nilable = false, Documentation = { "If charge cooldown is active, time at which the most recent charge cooldown began; 0 if cooldown is not active" } },
-				{ Name = "cooldownDuration", Type = "number", Nilable = false, Documentation = { "Cooldown duration in seconds required to generate a charge" } },
-				{ Name = "chargeModRate", Type = "number", Nilable = false, Documentation = { "Rate at which cooldown UI should update" } },
-			},
-		},
-		{
-			Name = "ActionBarCooldownInfo",
-			Type = "Structure",
-			Fields =
-			{
-				{ Name = "startTime", Type = "number", Nilable = false, Documentation = { "If cooldown is active, time started; 0 if no cooldown; Current time if isEnabled is false" } },
-				{ Name = "duration", Type = "number", Nilable = false, Documentation = { "Cooldown duration in seconds if active; 0 if cooldown is inactive" } },
-				{ Name = "isEnabled", Type = "bool", Nilable = false, Documentation = { "False if cooldown is on hold (ex: some cooldowns only start after an active spell is cancelled); True otherwise" } },
-				{ Name = "modRate", Type = "number", Nilable = false, Documentation = { "Rate at which cooldown UI should update" } },
-			},
-		},
-		{
-			Name = "ActionUsableState",
-			Type = "Structure",
-			Fields =
-			{
-				{ Name = "slot", Type = "luaIndex", Nilable = false },
-				{ Name = "usable", Type = "bool", Nilable = false },
-				{ Name = "noMana", Type = "bool", Nilable = false },
-			},
-		},
 	},
 };
 

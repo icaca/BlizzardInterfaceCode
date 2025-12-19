@@ -2,6 +2,7 @@ local SimpleStatusBarAPI =
 {
 	Name = "SimpleStatusBarAPI",
 	Type = "ScriptObject",
+	Environment = "All",
 
 	Functions =
 	{
@@ -16,6 +17,21 @@ local SimpleStatusBarAPI =
 			Returns =
 			{
 				{ Name = "fillStyle", Type = "StatusBarFillStyle", Nilable = false },
+			},
+		},
+		{
+			Name = "GetInterpolatedValue",
+			Type = "Function",
+			SecretReturnsForAspect = { Enum.SecretAspect.BarValue },
+			Documentation = { "Returns the current interpolated value displayed by the bar." },
+
+			Arguments =
+			{
+			},
+
+			Returns =
+			{
+				{ Name = "value", Type = "number", Nilable = false },
 			},
 		},
 		{
@@ -115,6 +131,19 @@ local SimpleStatusBarAPI =
 			},
 		},
 		{
+			Name = "GetTimerDuration",
+			Type = "Function",
+
+			Arguments =
+			{
+			},
+
+			Returns =
+			{
+				{ Name = "duration", Type = "LuaDurationObject", Nilable = false },
+			},
+		},
+		{
 			Name = "GetValue",
 			Type = "Function",
 			SecretReturnsForAspect = { Enum.SecretAspect.BarValue },
@@ -126,6 +155,20 @@ local SimpleStatusBarAPI =
 			Returns =
 			{
 				{ Name = "value", Type = "number", Nilable = false },
+			},
+		},
+		{
+			Name = "IsInterpolating",
+			Type = "Function",
+			Documentation = { "Returns true if the status bar is currently interpolating toward a target value." },
+
+			Arguments =
+			{
+			},
+
+			Returns =
+			{
+				{ Name = "isInterpolating", Type = "bool", Nilable = false },
 			},
 		},
 		{
@@ -174,6 +217,7 @@ local SimpleStatusBarAPI =
 			{
 				{ Name = "minValue", Type = "number", Nilable = false },
 				{ Name = "maxValue", Type = "number", Nilable = false },
+				{ Name = "interpolation", Type = "StatusBarInterpolation", Nilable = false, Default = "Immediate" },
 			},
 		},
 		{
@@ -255,6 +299,27 @@ local SimpleStatusBarAPI =
 			},
 		},
 		{
+			Name = "SetTimerDuration",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+
+			Arguments =
+			{
+				{ Name = "duration", Type = "LuaDurationObject", Nilable = false },
+				{ Name = "interpolation", Type = "StatusBarInterpolation", Nilable = false, Default = "Immediate" },
+				{ Name = "direction", Type = "StatusBarTimerDirection", Nilable = false, Default = "ElapsedTime" },
+			},
+		},
+		{
+			Name = "SetToTargetValue",
+			Type = "Function",
+			Documentation = { "Immediately finishes any interpolation of the bar and snaps it to the target value." },
+
+			Arguments =
+			{
+			},
+		},
+		{
 			Name = "SetValue",
 			Type = "Function",
 			SecretArgumentsAddAspect = { Enum.SecretAspect.BarValue },
@@ -263,6 +328,7 @@ local SimpleStatusBarAPI =
 			Arguments =
 			{
 				{ Name = "value", Type = "number", Nilable = false },
+				{ Name = "interpolation", Type = "StatusBarInterpolation", Nilable = false, Default = "Immediate" },
 			},
 		},
 	},

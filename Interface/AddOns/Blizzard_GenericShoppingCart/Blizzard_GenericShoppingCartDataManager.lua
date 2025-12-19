@@ -47,6 +47,10 @@ function ShoppingCartDataManagerMixin:SetClearCartCallback(clearCartCallback)
 	self.ClearCartCallback = clearCartCallback;
 end
 
+function ShoppingCartDataManagerMixin:SetPurchaseCartCallback(purchaseCartCallback)
+	self.PurchaseCartCallback = purchaseCartCallback;
+end
+
 local CartIDCounter = 0;
 
 local function IncrementAndGetCurrCartID()
@@ -85,7 +89,6 @@ function ShoppingCartDataManagerMixin:RemoveFromCart(cartItemToRemove)
 			end
 		end
 	end
-
 	-- Default to checking the cart ID
 	for index, currCartItem in ipairs(self.cartList) do
 		if cartItemToRemove.cartID == currCartItem.cartID then

@@ -296,6 +296,7 @@ function EncounterJournal_OnLoad(self)
 	self:RegisterEvent("PORTRAITS_UPDATED");
 	self:RegisterEvent("SEARCH_DB_LOADED");
 	self:RegisterEvent("UI_MODEL_SCENE_INFO_UPDATED");
+	self:RegisterEvent("SHOW_JOURNEYS_UI");
 
 	self.encounter.freeHeaders = {};
 	self.encounter.usedHeaders = {};
@@ -605,7 +606,9 @@ local function ExpansionDropdown_SelectInternal(self, tier)
 	EJ_ContentTab_SetEnabled(EncounterJournal.raidsTab, true);
 
 	local tierData = GetEJTierData(tier);
-	instanceSelect.bg:SetAtlas(tierData.backgroundAtlas, true);
+	if not EncounterJournal_IsJourneysTabSelected(EncounterJournal) then
+		instanceSelect.bg:SetAtlas(tierData.backgroundAtlas, true);
+	end
 
 	-- Item Set tab uses the tier dropdown, but we do not want to show instances when changing tiers on that tab.
 	if EncounterJournal_IsDungeonTabSelected(EncounterJournal) or EncounterJournal_IsRaidTabSelected(EncounterJournal) then
@@ -619,8 +622,10 @@ local function ExpansionDropdown_SelectInternal(self, tier)
 		-- If tier is greater than EJ_TIER_DATA, either we have "current season" selected, or an expansion is missing. Fall back on the current expansion.
 		if tier > #EJ_TIER_DATA then
 			self.JourneysFrame.expansionFilter = LE_EXPANSION_LEVEL_CURRENT;
+			self.JourneysFrame.currentSeason = true;
 		else
 			self.JourneysFrame.expansionFilter = tierData.expansionLevel;
+			self.JourneysFrame.currentSeason = false;
 		end
 
 		if self.JourneysFrame:IsShown() then
@@ -983,6 +988,9 @@ function EncounterJournal_OnEvent(self, event, ...)
 	elseif event == "SPELL_TEXT_UPDATE" then
 		local spellID = ...;
 		EncounterJournal_UpdateSpellText(self, spellID);
+	elseif  event == "SHOW_JOURNEYS_UI" then
+		local factionID = ...;
+		EncounterJournal_OpenToJourney(factionID);
 	end
 end
 
@@ -2358,7 +2366,7 @@ EncounterJournalFlagIconAtlases = {
 	[Enum.JournalEncounterIconFlags.Disease] = "icons_16x16_disease";
 	[Enum.JournalEncounterIconFlags.Enrage] = "icons_16x16_enrage";
 	[Enum.JournalEncounterIconFlags.Mythic] = "icons_16x16_mythic";
-	[Enum.JournalEncounterIconFlags.Bleed] = "icons_16x16_blood";
+	[Enum.JournalEncounterIconFlags.Bleed] = "icons_16x16_bleed";
 };
 
 function EncounterJournal_GetIconAtlasFromFlag(flag)
@@ -2662,6 +2670,15 @@ function EncounterJournal_OpenToPowerID(powerID)
 	EJ_ContentTab_Select(EncounterJournal.LootJournalTab:GetID());
 	EncounterJournal_SetLootJournalView(LOOT_JOURNAL_POWERS);
 	EncounterJournal.LootJournal:OpenToPowerID(powerID);
+end
+
+function EncounterJournal_OpenToJourney(factionID)
+	local majorFactionData = C_MajorFactions.GetMajorFactionData(factionID);
+	if majorFactionData then
+		ShowUIPanel(EncounterJournal);
+		EJ_ContentTab_Select(EncounterJournal.JourneysTab:GetID());
+		EncounterJournal.JourneysFrame:ResetView(majorFactionData);
+	end
 end
 
 function EncounterJournal_OpenJournal(difficultyID, instanceID, encounterID, sectionID, creatureID, itemID, tierIndex)
@@ -3129,7 +3146,11 @@ function EJSuggestFrame_RefreshDisplay()
 		local numLines = min(2, titleText:GetNumLines());
 		local fontHeight = select(2, titleText:GetFont());
 		centerDisplay.title:SetHeight(numLines * fontHeight + 2);
-		centerDisplay.description:SetHeight(descText:GetStringHeight());
+		local descStringHeight = descText:GetStringHeight();
+
+		-- Description could be empty if the data description is missing. We need a non-zero height so we can
+		-- access 'bottom' successfully.
+		centerDisplay.description:SetHeight(math.max(descStringHeight, 1));
 
 		-- adjust the center display to keep the text centered
 		local top = centerDisplay.title:GetTop();
@@ -3601,8 +3622,7 @@ GreatVaultButtonMixin = {};
 function GreatVaultButtonMixin:OnShow()
 	local currentDisplaySeason = C_SeasonInfo.GetCurrentDisplaySeasonID();
 	self.hasActiveSeason = currentDisplaySeason and currentDisplaySeason > 0;
-	self.GVButtonBG:SetDesaturated(not self.hasActiveSeason);
-	self.GVButtonBGHighlight:SetDesaturated(not self.hasActiveSeason);
+	self.NormalTexture:SetDesaturated(not self.hasActiveSeason);
 end
 
 function GreatVaultButtonMixin:OnClick()

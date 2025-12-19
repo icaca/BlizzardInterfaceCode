@@ -438,7 +438,7 @@ function UnitPopupWhisperButtonMixin:OnClick(contextData)
 	end
 
 	local unit = contextData.unit;
-	if unit and not UnitIsPlayer(unit) then
+	if unit and not UnitIsHumanPlayer(unit) then
 		return;
 	end
 
@@ -452,7 +452,7 @@ end
 
 function UnitPopupWhisperButtonMixin:IsEnabled(contextData)
 	local unit = contextData.unit;
-	return not unit or (UnitIsConnected(unit) and UnitIsPlayer(unit));
+	return not unit or (UnitIsConnected(unit) and UnitIsHumanPlayer(unit));
 end
 
 UnitPopupInviteButtonMixin = CreateFromMixins(UnitPopupButtonBaseMixin);
@@ -985,11 +985,13 @@ function UnitPopupPartyInstanceAbandonButtonMixin:GetTooltipText()
 	if timeLeft then
 		local cooldownTimeLeftText = PartyInstanceAbandonFormatter:Format(timeLeft);
 		return VOTE_TO_ABANDON_ON_COOLDOWN:format(cooldownTimeLeftText);
-	elseif IsEncounterInProgress() then
-		return ERR_VOTE_TO_ABANDON_ENCOUNTER;
-	else
-		return nil;
 	end
+
+	if C_InstanceEncounter.IsEncounterInProgress() then
+		return ERR_VOTE_TO_ABANDON_ENCOUNTER;
+	end
+
+	return nil;
 end
 
 UnitPopupFollowButtonMixin = CreateFromMixins(UnitPopupButtonBaseMixin);

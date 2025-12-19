@@ -3,6 +3,7 @@ local HousingUI =
 	Name = "HousingUI",
 	Type = "System",
 	Namespace = "C_Housing",
+	Environment = "All",
 
 	Functions =
 	{
@@ -17,6 +18,21 @@ local HousingUI =
 			Returns =
 			{
 				{ Name = "canEditCharter", Type = "bool", Nilable = false },
+			},
+		},
+		{
+			Name = "CanTakeReportScreenshot",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+
+			Arguments =
+			{
+				{ Name = "plotIndex", Type = "number", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "reason", Type = "InvalidPlotScreenshotReason", Nilable = false },
 			},
 		},
 		{
@@ -251,6 +267,15 @@ local HousingUI =
 			},
 		},
 		{
+			Name = "IsHousingMarketShopEnabled",
+			Type = "Function",
+
+			Returns =
+			{
+				{ Name = "isHousingMarketShopEnabled", Type = "bool", Nilable = false },
+			},
+		},
+		{
 			Name = "IsHousingServiceEnabled",
 			Type = "Function",
 
@@ -369,6 +394,7 @@ local HousingUI =
 		{
 			Name = "ReturnAfterVisitingHouse",
 			Type = "Function",
+			HasRestrictions = true,
 		},
 		{
 			Name = "SaveHouseSettings",
@@ -428,6 +454,7 @@ local HousingUI =
 		{
 			Name = "TeleportHome",
 			Type = "Function",
+			HasRestrictions = true,
 			SecretArguments = "AllowedWhenUntainted",
 
 			Arguments =
@@ -462,23 +489,9 @@ local HousingUI =
 			},
 		},
 		{
-			Name = "ValidateReportScreenshot",
-			Type = "Function",
-			SecretArguments = "AllowedWhenUntainted",
-
-			Arguments =
-			{
-				{ Name = "plotIndex", Type = "number", Nilable = false },
-			},
-
-			Returns =
-			{
-				{ Name = "isValid", Type = "bool", Nilable = false },
-			},
-		},
-		{
 			Name = "VisitHouse",
 			Type = "Function",
+			HasRestrictions = true,
 			SecretArguments = "AllowedWhenUntainted",
 
 			Arguments =
@@ -593,6 +606,16 @@ local HousingUI =
 			Type = "Event",
 			LiteralName = "HOUSE_INFO_UPDATED",
 			SynchronousEvent = true,
+		},
+		{
+			Name = "HouseLevelChanged",
+			Type = "Event",
+			LiteralName = "HOUSE_LEVEL_CHANGED",
+			SynchronousEvent = true,
+			Payload =
+			{
+				{ Name = "newHouseLevelInfo", Type = "HouseLevelInfo", Nilable = true },
+			},
 		},
 		{
 			Name = "HouseLevelFavorUpdated",
@@ -773,6 +796,16 @@ local HousingUI =
 			},
 		},
 		{
+			Name = "RemoveNeighborhoodCharterSignature",
+			Type = "Event",
+			LiteralName = "REMOVE_NEIGHBORHOOD_CHARTER_SIGNATURE",
+			SynchronousEvent = true,
+			Payload =
+			{
+				{ Name = "signature", Type = "cstring", Nilable = false },
+			},
+		},
+		{
 			Name = "ShowNeighborhoodOwnershipTransferDialog",
 			Type = "Event",
 			LiteralName = "SHOW_NEIGHBORHOOD_OWNERSHIP_TRANSFER_DIALOG",
@@ -824,15 +857,16 @@ local HousingUI =
 		{
 			Name = "HousingItemToastType",
 			Type = "Enumeration",
-			NumValues = 4,
+			NumValues = 5,
 			MinValue = 0,
-			MaxValue = 3,
+			MaxValue = 4,
 			Fields =
 			{
 				{ Name = "Room", Type = "HousingItemToastType", EnumValue = 0 },
 				{ Name = "Fixture", Type = "HousingItemToastType", EnumValue = 1 },
 				{ Name = "Customization", Type = "HousingItemToastType", EnumValue = 2 },
 				{ Name = "Decor", Type = "HousingItemToastType", EnumValue = 3 },
+				{ Name = "House", Type = "HousingItemToastType", EnumValue = 4 },
 			},
 		},
 	},

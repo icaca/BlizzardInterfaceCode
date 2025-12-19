@@ -1,4 +1,3 @@
-MAIN_ACTION_BAR_DEFAULT_OFFSET_Y = 45;
 RIGHT_ACTION_BAR_DEFAULT_OFFSET_X = -5;
 RIGHT_ACTION_BAR_DEFAULT_PADDING_X = 0;
 RIGHT_ACTION_BAR_DEFAULT_OFFSET_Y = -77;
@@ -58,11 +57,11 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				[Enum.EditModeActionBarSetting.AlwaysShowButtons] = 1,
 			},
 			anchorInfo = {
-				point = "BOTTOM",
-				relativeTo = "UIParent",
-				relativePoint = "BOTTOM",
+				point = ACTION_BAR_3_ANCHOR_POINT,
+				relativeTo = ACTION_BAR_3_RELATIVE_TO,
+				relativePoint = ACTION_BAR_3_RELATIVE_POINT,
 				offsetX = 0,
-				offsetY = MAIN_ACTION_BAR_DEFAULT_OFFSET_Y,
+				offsetY = BOTTOM_ACTION_BARS_INITIAL_OFFSET_Y,
 			},
 		},
 
@@ -284,7 +283,7 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				[Enum.EditModeUnitFrameSetting.SortPlayersBy] = Enum.SortPlayersBy.Group,
 				[Enum.EditModeUnitFrameSetting.AuraOrganizationType] = Enum.RaidAuraOrganizationType.Legacy,
 				[Enum.EditModeUnitFrameSetting.Opacity] = 100,
-				[Enum.EditModeUnitFrameSetting.IconSize] = 100,
+				[Enum.EditModeUnitFrameSetting.IconSize] = 5,
 			},
 			anchorInfo = {
 				point = "TOPLEFT",
@@ -306,7 +305,7 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				[Enum.EditModeUnitFrameSetting.RowSize] = 5,
 				[Enum.EditModeUnitFrameSetting.AuraOrganizationType] = Enum.RaidAuraOrganizationType.Legacy,
 				[Enum.EditModeUnitFrameSetting.Opacity] = 100,
-				[Enum.EditModeUnitFrameSetting.IconSize] = 100,
+				[Enum.EditModeUnitFrameSetting.IconSize] = 5,
 			},
 			anchorInfo = {
 				point = "TOPLEFT",
@@ -341,7 +340,7 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				[Enum.EditModeUnitFrameSetting.DisplayBorder] = 0,
 				[Enum.EditModeUnitFrameSetting.AuraOrganizationType] = Enum.RaidAuraOrganizationType.Legacy,
 				[Enum.EditModeUnitFrameSetting.Opacity] = 100,
-				[Enum.EditModeUnitFrameSetting.IconSize] = 100,
+				[Enum.EditModeUnitFrameSetting.IconSize] = 5,
 			},
 			anchorInfo = {
 				point = "RIGHT",
@@ -431,6 +430,7 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				[Enum.EditModeAuraFrameSetting.IconLimitDebuffFrame] = 8,
 				[Enum.EditModeAuraFrameSetting.IconSize] = 5,
 				[Enum.EditModeAuraFrameSetting.IconPadding] = 5,
+				[Enum.EditModeAuraFrameSetting.ShowDispelType] = 1,
 			},
 			anchorInfo = {
 				point = "TOPRIGHT",
@@ -548,11 +548,11 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 			[Enum.EditModeMicroMenuSetting.EyeSize] = 10,
 		},
 		anchorInfo = {
-			point = "BOTTOMRIGHT",
-			relativeTo = "MicroButtonAndBagsBar",
-			relativePoint = "BOTTOMRIGHT",
-			offsetX = 0,
-			offsetY = 0,
+			point = MICRO_MENU_ANCHOR_POINT,
+			relativeTo = MICRO_MENU_ANCHOR_RELATIVE_TO,
+			relativePoint = MICRO_MENU_ANCHOR_RELATIVE_POINT,
+			offsetX = MICRO_MENU_ANCHOR_OFFSET_X,
+			offsetY = MICRO_MENU_ANCHOR_OFFSET_Y,
 		},
 	},
 
@@ -563,11 +563,11 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 			[Enum.EditModeBagsSetting.Size] = 5,
 		},
 		anchorInfo = {
-			point = "TOPRIGHT",
-			relativeTo = "MicroButtonAndBagsBar",
-			relativePoint = "TOPRIGHT",
-			offsetX = 0,
-			offsetY = 10,
+			point = BAGS_ANCHOR_POINT,
+			relativeTo = BAGS_ANCHOR_RELATIVE_TO,
+			relativePoint = BAGS_ANCHOR_RELATIVE_POINT,
+			offsetX = BAGS_ANCHOR_OFFSET_X,
+			offsetY = BAGS_ANCHOR_OFFSET_Y,
 		},
 	},
 
@@ -580,7 +580,7 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				relativeTo = "StatusTrackingBarManager",
 				relativePoint = "BOTTOM",
 				offsetX = 0,
-				offsetY = 0,
+				offsetY = STATUS_BAR_1_ANCHOR_OFFSET_Y,
 			},
 		},
 		[Enum.EditModeStatusTrackingBarSystemIndices.StatusTrackingBar2] = {
@@ -591,7 +591,7 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				relativeTo = "StatusTrackingBarManager",
 				relativePoint = "BOTTOM",
 				offsetX = 0,
-				offsetY = 17,
+				offsetY = STATUS_BAR_2_ANCHOR_OFFSET_Y,
 			},
 		},
 	},
@@ -760,23 +760,23 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 	[Enum.EditModeSystem.EncounterEvents] = {
 		[Enum.EditModeEncounterEventsSystemIndices.Timeline] = {
 			settings = {
-				[Enum.EditModeEncounterEventsSetting.Orientation] = Enum.EncounterEventsOrientation.Horizontal,
+				[Enum.EditModeEncounterEventsSetting.Orientation] = Enum.EncounterEventsOrientation.Vertical,
 				[Enum.EditModeEncounterEventsSetting.IconDirection] = Enum.EncounterEventsIconDirection.Right,
 				[Enum.EditModeEncounterEventsSetting.IconSize] = 5,
 				[Enum.EditModeEncounterEventsSetting.OverallSize] = 5,
 				[Enum.EditModeEncounterEventsSetting.Transparency] = 50,
-				[Enum.EditModeEncounterEventsSetting.Background] = 0,
+				[Enum.EditModeEncounterEventsSetting.BackgroundTransparency] = 0,
 				[Enum.EditModeEncounterEventsSetting.Visibility] = Enum.EncounterEventsVisibility.InEncounter,
 				[Enum.EditModeEncounterEventsSetting.ShowSpellName] = 0,
-				[Enum.EditModeEncounterEventsSetting.ShowTooltips] = 0,
+				[Enum.EditModeEncounterEventsSetting.ShowTooltips] = 1,
 				[Enum.EditModeEncounterEventsSetting.ShowTimer] = 1,
 			},
 			anchorInfo = {
-				point = "TOP",
+				point = "BOTTOMRIGHT",
 				relativeTo = "UIParent",
-				relativePoint = "TOP",
-				offsetX = 0,
-				offsetY = -130,
+				relativePoint = "BOTTOM",
+				offsetX = -457,
+				offsetY = 336,
 			},
 		},
 		[Enum.EditModeEncounterEventsSystemIndices.CriticalWarnings] = {
@@ -792,7 +792,7 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				relativeTo = "UIParent",
 				relativePoint = "TOP",
 				offsetX = 0,
-				offsetY = -215,
+				offsetY = -40,
 			},
 		},
 		[Enum.EditModeEncounterEventsSystemIndices.MediumWarnings] = {
@@ -808,7 +808,7 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				relativeTo = "UIParent",
 				relativePoint = "TOP",
 				offsetX = 0,
-				offsetY = -270,
+				offsetY = -90,
 			},
 
 		},
@@ -825,7 +825,7 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 				relativeTo = "UIParent",
 				relativePoint = "TOP",
 				offsetX = 0,
-				offsetY = -315,
+				offsetY = -130,
 			},
 		},
 	},
@@ -834,16 +834,16 @@ EDIT_MODE_MODERN_SYSTEM_MAP =
 		settings = {
 			[Enum.EditModeDamageMeterSetting.Visibility] = Enum.DamageMeterVisibility.Always,
 			[Enum.EditModeDamageMeterSetting.Style] = Enum.DamageMeterStyle.Default,
-			[Enum.EditModeDamageMeterSetting.Numbers] = Enum.DamageMeterNumbers.Minimal,
+			[Enum.EditModeDamageMeterSetting.Numbers] = Enum.DamageMeterNumbers.Compact,
 			[Enum.EditModeDamageMeterSetting.FrameWidth] = 100,
-			[Enum.EditModeDamageMeterSetting.FrameHeight] = 50,
-			[Enum.EditModeDamageMeterSetting.BarHeight] = 9,
-			[Enum.EditModeDamageMeterSetting.Padding] = 0,
+			[Enum.EditModeDamageMeterSetting.FrameHeight] = 20,
+			[Enum.EditModeDamageMeterSetting.BarHeight] = 1,
+			[Enum.EditModeDamageMeterSetting.Padding] = 2,
 			[Enum.EditModeDamageMeterSetting.Transparency] = 50,
-			[Enum.EditModeDamageMeterSetting.LockScroll] = 0,
 			[Enum.EditModeDamageMeterSetting.ShowSpecIcon] = 1,
 			[Enum.EditModeDamageMeterSetting.ShowClassColor] = 1,
 			[Enum.EditModeDamageMeterSetting.TextSize] = 5,
+			[Enum.EditModeDamageMeterSetting.BackgroundTransparency] = 50,
 		},
 		anchorInfo = {
 			point = "TOPLEFT",
@@ -1134,7 +1134,7 @@ EDIT_MODE_CLASSIC_SYSTEM_MAP =
 				[Enum.EditModeUnitFrameSetting.SortPlayersBy] = Enum.SortPlayersBy.Group,
 				[Enum.EditModeUnitFrameSetting.AuraOrganizationType] = Enum.RaidAuraOrganizationType.Legacy,
 				[Enum.EditModeUnitFrameSetting.Opacity] = 100,
-				[Enum.EditModeUnitFrameSetting.IconSize] = 100,
+				[Enum.EditModeUnitFrameSetting.IconSize] = 5,
 			},
 			anchorInfo = {
 				point = "TOPLEFT",
@@ -1156,7 +1156,7 @@ EDIT_MODE_CLASSIC_SYSTEM_MAP =
 				[Enum.EditModeUnitFrameSetting.RowSize] = 5,
 				[Enum.EditModeUnitFrameSetting.AuraOrganizationType] = Enum.RaidAuraOrganizationType.Legacy,
 				[Enum.EditModeUnitFrameSetting.Opacity] = 100,
-				[Enum.EditModeUnitFrameSetting.IconSize] = 100,
+				[Enum.EditModeUnitFrameSetting.IconSize] = 5,
 			},
 			anchorInfo = {
 				point = "TOPLEFT",
@@ -1191,7 +1191,7 @@ EDIT_MODE_CLASSIC_SYSTEM_MAP =
 				[Enum.EditModeUnitFrameSetting.DisplayBorder] = 0,
 				[Enum.EditModeUnitFrameSetting.AuraOrganizationType] = Enum.RaidAuraOrganizationType.Legacy,
 				[Enum.EditModeUnitFrameSetting.Opacity] = 100,
-				[Enum.EditModeUnitFrameSetting.IconSize] = 100,
+				[Enum.EditModeUnitFrameSetting.IconSize] = 5,
 			},
 			anchorInfo = {
 				point = "RIGHT",
@@ -1335,7 +1335,7 @@ EDIT_MODE_CLASSIC_SYSTEM_MAP =
 			relativeTo = "UIParent",
 			relativePoint = "BOTTOMLEFT",
 			offsetX = 35,
-			offsetY = 50,
+			offsetY = CHAT_FRAME_ANCHOR_OFFSET_Y,
 		},
 	},
 

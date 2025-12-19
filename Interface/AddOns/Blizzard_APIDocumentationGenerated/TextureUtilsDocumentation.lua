@@ -3,6 +3,7 @@ local TextureUtils =
 	Name = "TextureUtils",
 	Type = "System",
 	Namespace = "C_Texture",
+	Environment = "All",
 
 	Functions =
 	{
@@ -84,21 +85,6 @@ local TextureUtils =
 			Returns =
 			{
 				{ Name = "info", Type = "AtlasInfo", Nilable = false },
-			},
-		},
-		{
-			Name = "GetCraftingReagentQualityChatIcon",
-			Type = "Function",
-			SecretArguments = "AllowedWhenUntainted",
-
-			Arguments =
-			{
-				{ Name = "quality", Type = "number", Nilable = false },
-			},
-
-			Returns =
-			{
-				{ Name = "textureMarkup", Type = "cstring", Nilable = false },
 			},
 		},
 		{

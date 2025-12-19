@@ -3,6 +3,7 @@ local Loot =
 	Name = "Loot",
 	Type = "System",
 	Namespace = "C_Loot",
+	Environment = "All",
 
 	Functions =
 	{
@@ -160,6 +161,16 @@ local Loot =
 			{
 				{ Name = "bagSlot", Type = "luaIndex", Nilable = false },
 				{ Name = "iconFileID", Type = "number", Nilable = false },
+			},
+		},
+		{
+			Name = "LegacyLootRulesChanged",
+			Type = "Event",
+			LiteralName = "LEGACY_LOOT_RULES_CHANGED",
+			SynchronousEvent = true,
+			Payload =
+			{
+				{ Name = "isLegacyLootModeEnabled", Type = "bool", Nilable = false },
 			},
 		},
 		{
