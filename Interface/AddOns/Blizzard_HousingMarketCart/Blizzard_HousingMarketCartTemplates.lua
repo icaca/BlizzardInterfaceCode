@@ -73,6 +73,9 @@ end
 function HousingMarketCartFrameMixin:StartCurrencyRefreshTicker()
 	self:StopCurrencyRefreshTicker();
 
+	-- Perform an immediate refresh upon starting the ticker
+	C_CatalogShop.RefreshVirtualCurrencyBalance(Constants.CatalogShopVirtualCurrencyConstants.HEARTHSTEEL_VC_CURRENCY_CODE);
+
 	local currencyRefreshTickTime = 20;
 	self.CurrencyRefreshTicker = C_Timer.NewTicker(currencyRefreshTickTime, function()
 		C_CatalogShop.RefreshVirtualCurrencyBalance(Constants.CatalogShopVirtualCurrencyConstants.HEARTHSTEEL_VC_CURRENCY_CODE);
@@ -136,6 +139,8 @@ function HousingMarketCartFrameMixin:PlayHearthsteelBalanceUpdateAnim()
 	self.HearthSteelCoinGlow:Show();
 	self.HearthSteelCoinGlow.Anim:Play();
 	self.deferedHearthsteelAnim = false;
+
+	PlaySound(SOUNDKIT.HOUSING_MARKET_PURCHASE_HEARTHSTEEL);
 end
 
 function HousingMarketCartFrameMixin:GetEventNamespace()
@@ -283,6 +288,11 @@ function HousingMarketCartFrameMixin:SetupDataManager()
 
 		local hearthsteelBalance, _icon, _iconIsAtlas = self:GetCartCurrencyInfo();
 		if totalPrice > hearthsteelBalance then
+			local neededAmount = totalPrice - hearthsteelBalance;
+			local bestVCProductID = C_CatalogShop.FindBestCurrencyProductForNeededAmount(Constants.CatalogShopVirtualCurrencyConstants.HEARTHSTEEL_VC_CURRENCY_CODE, neededAmount);
+			if bestVCProductID then
+				CatalogShopTopUpFlowInboundInterface.SetSuggestedProduct(bestVCProductID);
+			end
 			CatalogShopTopUpFlowInboundInterface.SetDesiredQuantity(totalPrice);
 			CatalogShopTopUpFlowInboundInterface.SetCurrentBalance(hearthsteelBalance);
 			CatalogShopTopUpFlowInboundInterface.SetShown(true, self:GetParent());
@@ -567,8 +577,6 @@ function HousingMarketCartDataManagerMixin:ClearCartInternal()
 end
 
 function HousingMarketCartDataManagerMixin:ClearCart(requiresConfirmation)
-	PlaySound(SOUNDKIT.HOUSING_MARKET_REMOVE_ALL_ITEMS_BUTTON);
-
 	if #self.cartList < 1 then
 		return;
 	end
@@ -601,12 +609,17 @@ function HousingMarketCartDataManagerMixin:BULK_PURCHASE_RESULT_RECEIVED(...)
 	end
 
 	local function Promote(cartItem)
+		local message = HOUSING_MARKET_PREVIEW_DECOR_ADDED_TO_CHEST;
 		if cartItem.decorGUID then
-			if not C_HousingCatalog.PromotePreviewDecor(cartItem.decorID, cartItem.decorGUID) then
+			if C_HousingCatalog.PromotePreviewDecor(cartItem.decorID, cartItem.decorGUID) then
+				message = HOUSING_MARKET_PREVIEW_DECOR_ADDED_TO_WORLD;
+			else
 				--if the promotion fails for any reason, delete the preview decor.
 				C_HousingCatalog.DeletePreviewCartDecor(cartItem.decorGUID);
 			end
 		end
+
+		ChatFrameUtil.DisplaySystemMessageInPrimary(string.format(message, cartItem.name));
 	end
 
 	local result, individualResults = ...;

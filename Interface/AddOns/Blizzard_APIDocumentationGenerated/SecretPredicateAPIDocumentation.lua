@@ -9,6 +9,70 @@ local SecretPredicateAPI =
 	Functions =
 	{
 		{
+			Name = "GetPowerTypeSecrecy",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Queries the base secrecy for a power type." },
+
+			Arguments =
+			{
+				{ Name = "powerType", Type = "PowerType", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "secrecy", Type = "SecrecyLevel", Nilable = false },
+			},
+		},
+		{
+			Name = "GetSpellAuraSecrecy",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Queries the base secrecy for a spell if queried as an aura." },
+
+			Arguments =
+			{
+				{ Name = "spellIdentifier", Type = "SpellIdentifier", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "secrecy", Type = "SecrecyLevel", Nilable = false },
+			},
+		},
+		{
+			Name = "GetSpellCastSecrecy",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Queries the base secrecy for a spell if queried as a cast." },
+
+			Arguments =
+			{
+				{ Name = "spellIdentifier", Type = "SpellIdentifier", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "secrecy", Type = "SecrecyLevel", Nilable = false },
+			},
+		},
+		{
+			Name = "GetSpellCooldownSecrecy",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Queries the base secrecy for a spell if queried as a cooldown." },
+
+			Arguments =
+			{
+				{ Name = "spellIdentifier", Type = "SpellIdentifier", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "secrecy", Type = "SecrecyLevel", Nilable = false },
+			},
+		},
+		{
 			Name = "HasSecretRestrictions",
 			Type = "Function",
 			Documentation = { "Returns true if this client build has secret value restrictions enabled. If false, all APIs that are tagged as potentially returning secrets will never do so." },
@@ -104,6 +168,38 @@ local SecretPredicateAPI =
 			},
 		},
 		{
+			Name = "ShouldTotemSlotBeSecret",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns true if information about a totem slot will produce secret values if queried." },
+
+			Arguments =
+			{
+				{ Name = "slot", Type = "luaIndex", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "isTotemSecret", Type = "bool", Nilable = false },
+			},
+		},
+		{
+			Name = "ShouldTotemSpellBeSecret",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns true if information about a spell when associated with a totem slot will produce secret values if queried." },
+
+			Arguments =
+			{
+				{ Name = "spellID", Type = "number", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "isTotemSecret", Type = "bool", Nilable = false },
+			},
+		},
+		{
 			Name = "ShouldUnitAuraIndexBeSecret",
 			Type = "Function",
 			SecretArguments = "AllowedWhenUntainted",
@@ -170,6 +266,22 @@ local SecretPredicateAPI =
 			Returns =
 			{
 				{ Name = "isUnitComparisonSecret", Type = "bool", Nilable = false },
+			},
+		},
+		{
+			Name = "ShouldUnitHealthMaxBeSecret",
+			Type = "Function",
+			SecretArguments = "AllowedWhenUntainted",
+			Documentation = { "Returns true if queries for maximum unit health will produce secret values." },
+
+			Arguments =
+			{
+				{ Name = "unit", Type = "UnitToken", Nilable = false },
+			},
+
+			Returns =
+			{
+				{ Name = "isUnitHealthMaxSecret", Type = "bool", Nilable = false },
 			},
 		},
 		{

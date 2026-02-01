@@ -1,6 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
 ..\..\Blizzard_SharedXML\UI.xsd">
-	<Button name="CompactAuraTemplate" virtual="true" enableMouse="false" registerForClicks="LeftButtonDown, RightButtonUp">
+	<Button name="CompactAuraTemplate" virtual="true" enableMouse="false" registerForClicks="AnyDown, RightButtonUp">
 		<Size x="17" y="17"/>
 		<Layers>
 			<Layer level="ARTWORK">
@@ -65,7 +65,7 @@
 			<OnLeave method="OnLeave"/>
 		</Scripts>
 	</Button>
-	<Frame name="CompactUnitPrivateAuraAnchorTemplate" mixin="CompactUnitPrivateAuraAnchorMixin" frameLevel="90" parentArray="PrivateAuraAnchors" virtual="true"/>
+	<Frame name="CompactUnitPrivateAuraAnchorTemplate" mixin="CompactUnitPrivateAuraAnchorMixin" frameLevel="90" parentArray="PrivateAuraAnchors" propagateMouseInput="Clicks" virtual="true"/>
 	<Frame name="CompactUnitFrameDispelOverlayTemplate" mixin="CompactUnitFrameDispelOverlayMixin" virtual="true">
 		<Layers>
 			<Layer level="ARTWORK" textureSubLevel="-6">
@@ -78,9 +78,12 @@
 		</Layers>
 	</Frame>
 	<Button name="CompactUnitFrameTemplate" frameStrata="LOW" inherits="SecureUnitButtonTemplate, PingableUnitFrameTemplate" virtual="true">
+		<KeyValues>
+			<KeyValue key="maxPrivateAuras" value="5" type="number"/>
+		</KeyValues>
 		<Layers>
 			<Layer level="BACKGROUND">
-				<Texture name="$parentBackground" parentKey="background" atlas="RaidFrame-Hp-Bg" hWrapMode="REPEAT" vWrapMode="REPEAT" setAllPoints="true"/>
+				<Texture name="$parentBackground" parentKey="background" atlas="raidframe-hp-bg-white" hWrapMode="REPEAT" vWrapMode="REPEAT" setAllPoints="true"/>
 			</Layer>
 			<Layer level="BORDER" textureSubLevel="5">
 				<Texture name="$parentMyHealPrediction" parentKey="myHealPrediction"/>
@@ -101,7 +104,6 @@
 				<Texture name="$parentRoleIcon" hidden="true" parentKey="roleIcon">
 					<Size x="17" y="17"/>
 				</Texture>
-				<Texture name="$parentAggroHighlight" parentKey="aggroHighlight" atlas="RaidFrame-AgroFrame" setAllPoints="true"/>
 			</Layer>
 			<Layer level="ARTWORK" textureSubLevel="1">
 				<Texture name="$parentMyHealAbsorb" parentKey="myHealAbsorb"/>
@@ -114,6 +116,9 @@
 			<Layer level="ARTWORK" textureSubLevel="2">
 				<Texture name="$parentOverAbsorbGlow" parentKey="overAbsorbGlow"/>
 				<Texture name="$parentOverHealAbsorbGlow" parentKey="overHealAbsorbGlow"/>
+			</Layer>
+			<Layer level="ARTWORK" textureSubLevel="3">
+				<Texture name="$parentAggroHighlight" parentKey="aggroHighlight" atlas="RaidFrame-AgroFrame" setAllPoints="true"/>
 			</Layer>
 			<Layer level="OVERLAY">
 				<Texture name="$parentSelectionHighlight" parentKey="selectionHighlight" atlas="RaidFrame-TargetFrame" ignoreParentAlpha="true" setAllPoints="true"/>
@@ -165,6 +170,30 @@
 				</KeyValues>
 				<Anchors>
 					<Anchor point="LEFT" relativeKey="$parent.PrivateAuraAnchor1" relativePoint="RIGHT"/>
+				</Anchors>
+			</Frame>
+			<Frame parentKey="PrivateAuraAnchor3" inherits="CompactUnitPrivateAuraAnchorTemplate">
+				<KeyValues>
+					<KeyValue key="auraIndex" value="3" type="number"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.PrivateAuraAnchor2" relativePoint="RIGHT"/>
+				</Anchors>
+			</Frame>
+			<Frame parentKey="PrivateAuraAnchor4" inherits="CompactUnitPrivateAuraAnchorTemplate">
+				<KeyValues>
+					<KeyValue key="auraIndex" value="4" type="number"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.PrivateAuraAnchor3" relativePoint="RIGHT"/>
+				</Anchors>
+			</Frame>
+			<Frame parentKey="PrivateAuraAnchor5" inherits="CompactUnitPrivateAuraAnchorTemplate">
+				<KeyValues>
+					<KeyValue key="auraIndex" value="5" type="number"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.PrivateAuraAnchor4" relativePoint="RIGHT"/>
 				</Anchors>
 			</Frame>
 			<Button name="$parentDispelDebuff1" inherits="CompactDispelDebuffTemplate"/>

@@ -2,7 +2,7 @@ EncounterWarningsSystemDynamicEvents = {
 	"ENCOUNTER_WARNING",
 };
 
-EncounterWarningsSystemFrameMixin = CreateFromMixins(EditModeEncounterEventsSystemMixin, ResizeLayoutMixin);
+EncounterWarningsSystemFrameMixin = CreateFromMixins(EditModeEncounterEventsSystemMixin);
 
 function EncounterWarningsSystemFrameMixin:OnLoad()
 	EditModeEncounterEventsSystemMixin.OnSystemLoad(self);
@@ -18,7 +18,6 @@ end
 
 function EncounterWarningsSystemFrameMixin:OnShow()
 	FrameUtil.RegisterFrameForEvents(self, EncounterWarningsSystemDynamicEvents);
-	ResizeLayoutMixin.OnShow(self);
 end
 
 function EncounterWarningsSystemFrameMixin:OnHide()
@@ -68,10 +67,6 @@ end
 
 function EncounterWarningsSystemFrameMixin:OnBossEmoteCleared()
 	self:HideWarning();
-end
-
-function EncounterWarningsSystemFrameMixin:GetLayoutChildren()
-	return { self.View };
 end
 
 function EncounterWarningsSystemFrameMixin:GetView()
@@ -176,7 +171,7 @@ function EncounterWarningsSystemFrameMixin:UpdateSystemSettingVisibility()
 	self:UpdateVisibility();
 end
 
-function EncounterWarningsSystemFrameMixin:UpdateSystemSettingShowTooltips()
-	local tooltipsEnabled = self:GetSettingValueBool(Enum.EditModeEncounterEventsSetting.ShowTooltips);
-	self:GetView():SetTooltipsEnabled(tooltipsEnabled);
+function EncounterWarningsSystemFrameMixin:UpdateSystemSettingTooltipAnchor()
+	local tooltipAnchor = self:GetSettingValue(Enum.EditModeEncounterEventsSetting.TooltipAnchor);
+	self:GetView():SetTooltipAnchor(tooltipAnchor);
 end

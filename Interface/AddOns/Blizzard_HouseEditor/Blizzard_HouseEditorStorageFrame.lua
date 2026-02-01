@@ -40,7 +40,6 @@ function HouseEditorStorageButtonMixin:OnLeave()
 end
 
 local StorageLifetimeEvents = {
-	"HOUSING_CATALOG_SEARCHER_RELEASED",
 	"PLAYER_LEAVING_WORLD",
 	"CATALOG_SHOP_DATA_REFRESH",
 	"HOUSE_EDITOR_MODE_CHANGED",
@@ -118,6 +117,7 @@ function HouseEditorStorageFrameMixin:OnLoad()
 	self.catalogSearcher:SetResultsUpdatedCallback(function() self:OnEntryResultsUpdated(); end);
 	self.catalogSearcher:SetAutoUpdateOnParamChanges(false);
 	self.catalogSearcher:SetOwnedOnly(true);
+	self.catalogSearcher:SetDistinctPerRecordID(false);
 
 	local editorMode = C_HouseEditor.GetActiveHouseEditorMode();
 	self.catalogSearcher:SetEditorModeContext(editorMode);
@@ -141,9 +141,12 @@ function HouseEditorStorageFrameMixin:OnLoad()
 	--add a dialog confirming that you want to switch tabs, as doing so will delete your preview decor.
 	self.TabSystem:SetTabSelectedCallback(function(tabID, isUserAction)
 		if tabID == self.storageTabID and C_HousingDecor.GetNumPreviewDecor() > 0 then
-			StaticPopup_Show("CONFIRM_DESTROY_PREVIEW_DECOR", nil, nil, function()
-				self:SetTab(tabID, isUserAction);
-			end);
+			if not StaticPopup_Visible("CONFIRM_DESTROY_PREVIEW_DECOR") then
+				StaticPopup_Show("CONFIRM_DESTROY_PREVIEW_DECOR", nil, nil, function()
+					self:SetTab(tabID, isUserAction);
+				end);
+			end
+
 			return true; --stops the tab from being selected, for now.
 		else
 			return self:SetTab(tabID, isUserAction);
@@ -172,16 +175,6 @@ function HouseEditorStorageFrameMixin:OnEvent(event, ...)
 		self:UpdateEditorMode(newMode);
 	elseif event == "HOUSING_MARKET_AVAILABILITY_UPDATED" then
 		self:UpdateMarketTabVisibility();
-	elseif event == "HOUSING_CATALOG_SEARCHER_RELEASED" then
-		local releasedSearcher = ...;
-		if self.catalogSearcher and self.catalogSearcher == releasedSearcher then
-			-- This should only get called as part of ReloadUI
-			-- Unfortunately can't just clear it by listening to LEAVING_WORLD because that'll happen after the searcher has already been released
-			-- and after other receiving while-shown cleanup events that will lead this UI to attempt to reference it
-			self.catalogSearcher = nil;
-			self.Filters:ClearSearcherReference();
-			self.OptionsContainer:ClearCatalogData();
-		end
 	elseif event == "PLAYER_LEAVING_WORLD" then
 		-- We're going to use leaving world as a "good enough" point for refreshing data from the catalog shop.
 		self:CheckCloseMarketInteraction();
@@ -201,7 +194,7 @@ function HouseEditorStorageFrameMixin:OnEvent(event, ...)
 end
 
 local function SetCartFrameShown(shown, preserveCartState)
-	if not C_HousingCatalog.HasFeaturedEntries() then
+	if not HousingFramesUtil.IsHousingMarketShopAvailable() then
 		shown = false;
 		preserveCartState = false;
 	end
@@ -318,6 +311,7 @@ end
 
 function HouseEditorStorageFrameMixin:OnStorageTabSelected(_isUserAction)
 	self.catalogSearcher:SetOwnedOnly(true);
+	self.catalogSearcher:SetDistinctPerRecordID(false);
 	local categorySearchParams = self.Categories:GetCategorySearchParams();
 	categorySearchParams.withOwnedEntriesOnly = true;
 	categorySearchParams.includeFeaturedCategory = false;
@@ -339,6 +333,7 @@ function HouseEditorStorageFrameMixin:OnMarketTabSelected(isUserAction)
 	end
 
 	self.catalogSearcher:SetOwnedOnly(false);
+	self.catalogSearcher:SetDistinctPerRecordID(true);
 	local categorySearchParams = self.Categories:GetCategorySearchParams();
 	categorySearchParams.withOwnedEntriesOnly = false;
 	categorySearchParams.includeFeaturedCategory = self:ShouldShowMarketShop();

@@ -61,8 +61,22 @@ NewSettings["11.2.5"] = {
 NewSettings["12.0.0"] = {
 	"NAMEPLATES_LABEL", -- entire section is new
 	"COMBAT_WARNINGS_LABEL", -- entire section is new
-	"damageMeterEnabled",
-	"spellDiminishPVPEnemiesEnabled",
-	"externalDefensivesEnabled",
+	"DAMAGE_METER_LABEL", -- entire section is new
+	"SPELL_DIMINISH_SECTION_HEADER_LABEL", -- entire section is new
+	"EXTERNAL_DEFENSIVES_LABEL", -- entire section is new
 	"CAA_COMBAT_AUDIO_ALERTS_LABEL", -- entire section is new
+	"chatBubblesRaid",
+	"raidFramesDisplayClassColor",
+	"raidFramesDisplayLargerRoleSpecificDebuffs",
+	"raidFramesCenterBigDefensive",
+	"raidFramesDispelIndicatorType",
+	"raidFramesDispelIndicatorOverlay",
 };
+
+NewSettings["12.0.1"] = {
+	"enableConnectToPhotoSharing",
+}
+
+NewSettingsPredicates["enableConnectToPhotoSharing"] = function()
+	return C_HousingPhotoSharing.IsEnabled();
+end

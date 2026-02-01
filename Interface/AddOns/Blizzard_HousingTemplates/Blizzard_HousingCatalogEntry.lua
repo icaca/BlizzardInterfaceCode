@@ -3,6 +3,15 @@ local ActorTag = "decor";
 local QuestionMarkIconFileDataID = 134400;
 local ContentTrackingAtlasMarkup = CreateAtlasMarkup("waypoint-mappin-minimap-untracked", 16, 16, -3, 0);
 
+-- This is decor-only for now but should be extended to support entry type and recordID generically
+local function GetMarketInfoIfDecor(entryID)
+	if entryID.entryType == Enum.HousingCatalogEntryType.Decor then
+		return C_HousingCatalog.GetMarketInfoForDecor(entryID.recordID);
+	end
+
+	return nil;
+end
+
 HousingCatalogEntryMixin = {};
 
 function HousingCatalogEntryMixin:OnLoad()
@@ -197,7 +206,28 @@ function HousingCatalogEntryMixin:UpdateVisuals()
 		self.Icon:Show();
 	end
 
-	self.CustomizeIcon:SetShown(self.entryInfo.canCustomize);
+	local dyesShown = false;
+	if not self:IsInMarketView() then
+		for i, dyeID in ipairs(self.entryInfo.dyeIDs) do
+			local icon = self.dyeIcons[i];
+			if dyeID > 0 then
+				local dyeColorInfo = C_DyeColor.GetDyeColorInfo(dyeID);
+				if dyeColorInfo then
+					icon:SetVertexColor(dyeColorInfo.swatchColorStart:GetRGB());
+				end
+				icon:SetAtlas("dye-drop_32");
+				dyesShown = true;
+			else
+				icon:SetVertexColor(1,1,1);
+				icon:SetAtlas("dye-drop-no-dye_32")
+			end
+		end
+	end
+
+	self.CustomizeIcon:SetShown(not dyesShown and self.entryInfo.canCustomize);
+	for i, icon in ipairs(self.dyeIcons) do
+		icon:SetShown(dyesShown and i <= #self.entryInfo.dyeIDs);
+	end
 
 	self.InfoIcon:Hide();
 
@@ -212,7 +242,7 @@ function HousingCatalogEntryMixin:UpdateVisuals()
 			self.InfoText:SetTextColor(DISABLED_FONT_COLOR:GetRGB());
 		end
 	elseif self:IsInMarketView() then
-		local marketInfo = self.entryInfo.marketInfo;
+		local marketInfo = GetMarketInfoIfDecor(self.entryInfo.entryID);
 		local price = marketInfo and marketInfo.price or 0;
 		self.InfoText:SetText(Blizzard_HousingCatalogUtil.FormatPrice(price));
 		self.InfoText:SetShown(price > 0);
@@ -388,7 +418,7 @@ function HousingCatalogDecorEntryMixin:AddTooltipTitle(tooltip)
 
 	local dyeNames = self.entryInfo.customizations;
 	local isDyed = dyeNames and #dyeNames > 0;
-	local name = isDyed and HOUSING_DECOR_DYED_NAME_FORMAT:format(self.entryInfo.name) or self.entryInfo.name;
+	local name = (isDyed and not self:IsInMarketView()) and HOUSING_DECOR_DYED_NAME_FORMAT:format(self.entryInfo.name) or self.entryInfo.name;
 	local placementCost = HOUSING_DECOR_PLACEMENT_COST_FORMAT:format(self.entryInfo.placementCost);
 	local itemQualityColor = ColorManager.GetColorDataForItemQuality(self.entryInfo.quality or Enum.ItemQuality.Common).color;
 	local wrap = false;
@@ -399,7 +429,6 @@ function HousingCatalogDecorEntryMixin:AddTooltipLines(tooltip)
 	-- Overrides HousingCatalogEntryMixin.
 
 	local entryInfo = self.entryInfo;
-	local marketInfo = entryInfo.marketInfo;
 
 	if entryInfo.isUniqueTrophy then
 		GameTooltip_AddHighlightLine(tooltip, HOUSING_DECOR_UNIQUE_TROPHY_TOOLTIP);
@@ -427,6 +456,7 @@ function HousingCatalogDecorEntryMixin:AddTooltipLines(tooltip)
 
 	-- We only show market info in the market view.
 	elseif self:IsInMarketView() then
+		local marketInfo = GetMarketInfoIfDecor(entryInfo.entryID);
 		if marketInfo and marketInfo.price then
 			local priceText = Blizzard_HousingCatalogUtil.FormatPrice(marketInfo.price);
 			GameTooltip_AddHighlightLine(tooltip, HOUSING_DECOR_PRICE_FORMAT:format(priceText));
@@ -440,7 +470,7 @@ function HousingCatalogDecorEntryMixin:AddTooltipLines(tooltip)
 	end
 
 	local dyeNames = entryInfo.customizations;
-	if dyeNames and #dyeNames > 0 then
+	if dyeNames and #dyeNames > 0 and not self:IsInMarketView() then
 		local dyeNamesString = table.concat(dyeNames, ", ");
 		GameTooltip_AddNormalLine(tooltip, HOUSING_DECOR_DYE_LIST:format(dyeNamesString));
 	end
@@ -550,17 +580,8 @@ function HousingCatalogDecorEntryMixin:TypeSpecificOnInteract(button, isDrag)
 		StartPlacing = function() C_HousingBasicMode.StartPlacingNewDecor(self.entryID); end
 	end
 
-	local sound;
-	local size = self.entryInfo.size;
-	if size == Enum.HousingCatalogEntrySize.Tiny or size == Enum.HousingCatalogEntrySize.Small then
-		sound = SOUNDKIT.HOUSING_SELECT_ITEM_SMALL;
-	elseif size == Enum.HousingCatalogEntrySize.Medium or size == Enum.HousingCatalogEntrySize.None then
-		sound = SOUNDKIT.HOUSING_SELECT_ITEM_MEDIUM;
-	else
-		sound = SOUNDKIT.HOUSING_SELECT_ITEM_LARGE;
-	end
-
-	PlaySound(sound);
+	-- Sound will be played by HOUSING_BASIC_MODE_SELECTED_TARGET_CHANGED event handler
+	-- which properly handles preview vs non-preview sounds
 
 	if not C_HouseEditor.IsHouseEditorModeActive(Enum.HouseEditorMode.BasicDecor) then
 		C_HouseEditor.ActivateHouseEditorMode(Enum.HouseEditorMode.BasicDecor);
@@ -577,7 +598,8 @@ function HousingCatalogDecorEntryMixin:TypeSpecificOnInteract(button, isDrag)
 		-- if user dragged icon from the house chest, then add decor on mouse up.
 		-- otherwise, user clicked on house chest icon; don't add decor until next click.
 		activeEditorModeFrame.commitNewDecorOnMouseUp = isDrag;
-
+		--dragging functionality for placing preview Decor
+		activeEditorModeFrame.draggingPreviewDecor = C_HousingDecor.IsPreviewState() and isDrag;
 		-- HOUSING_TODO: We should add some kind of out error to these kinds of APIs so we can display any failure reasons
 		StartPlacing();
 	end
@@ -634,33 +656,19 @@ function HousingCatalogDecorEntryMixin:ShowContextMenu()
 		return;
 	end
 
-	local canDestroyEntry = C_HousingCatalog.CanDestroyEntry(self.entryID);
-
-	local showDisabledTooltip = function(tooltip, elementDescription)
-		GameTooltip_SetTitle(tooltip, HOUSING_DECOR_STORAGE_ITEM_CANNOT_DESTROY);
-	end
-
 	MenuUtil.CreateContextMenu(self, function(owner, rootDescription)
 		rootDescription:SetTag("MENU_HOUSING_CATALOG_ENTRY");
 
 		local timeStamp = C_HousingCatalog.GetCatalogEntryRefundTimeStampByRecordID(Enum.HousingCatalogEntryType.Decor, self.entryInfo.entryID.recordID);
 		if timeStamp then
 			rootDescription:CreateButton(HOUSING_DECOR_STORAGE_ITEM_REFUND, function()
-				if IsPublicBuild() then
-					CatalogShopRefundFlowInboundInterface.SetShown(true);
-
-				-- TODO:: Remove this debug code once we're finished implementing the refund flow.
-				else
-					local debugInfo = C_HousingCatalog.GetCatalogEntryDebugInfoForID(self.entryID);
-					local guidToRefund = debugInfo.instanceGUIDs[#debugInfo.instanceGUIDs];
-					local guidString = (debugInfo.instanceGUIDs[#debugInfo.instanceGUIDs]):sub(9, #guidToRefund);
-					ConsoleExec("refundDecorWithVC " .. guidString);
-				end
+				CatalogShopRefundFlowInboundInterface.SetShown(true);
 			end);
 		end
 
 		if self:IsInMarketView() then
-			if self.entryInfo.marketInfo then
+			local marketInfo = GetMarketInfoIfDecor(self.entryInfo.entryID);
+			if marketInfo then
 				rootDescription:CreateButton(HOUSING_MARKET_ADD_TO_CART, function()
 					local elementData = {
 						isBundleParent = false,
@@ -670,21 +678,21 @@ function HousingCatalogDecorEntryMixin:ShowContextMenu()
 						name = self.entryInfo.name,
 						decorID = self.entryID.recordID,
 						icon = self.entryInfo.iconTexture,
-						productID = self.entryInfo.marketInfo.productID;
-						price = self.entryInfo.marketInfo.originalPrice or self.entryInfo.marketInfo.price,
-						salePrice = self.entryInfo.marketInfo.originalPrice and self.entryInfo.marketInfo.price or nil,
+						productID = marketInfo.productID;
+						price = marketInfo.originalPrice or marketInfo.price,
+						salePrice = marketInfo.originalPrice and marketInfo.price or nil,
 					};
 
 					EventRegistry:TriggerEvent(string.format("%s.%s", HOUSING_MARKET_EVENT_NAMESPACE, ShoppingCartDataServices.AddToCart), elementData);
 				end);
 
-				if self.entryInfo.marketInfo.productID then
+				if marketInfo.productID then
 					rootDescription:CreateButton(HOUSING_MARKET_VIEW_IN_SHOP, function()
-						Blizzard_HousingCatalogUtil.OpenCatalogShopForProduct(self.entryInfo.marketInfo.productID);
+						Blizzard_HousingCatalogUtil.OpenCatalogShopForProduct(marketInfo.productID);
 					end);
 				end
 			end
-		else
+		elseif self:IsInStorageView() then
 			local destroySingleButtonDesc = rootDescription:CreateButton(HOUSING_DECOR_STORAGE_ITEM_DESTROY, function()
 				local popupData = {
 					destroyAll = false,
@@ -694,6 +702,13 @@ function HousingCatalogDecorEntryMixin:ShowContextMenu()
 				local promptText = string.format(HOUSING_DECOR_STORAGE_ITEM_CONFIRM_DESTROY, self.entryInfo.name, HOUSING_DECOR_STORAGE_ITEM_DESTROY_CONFIRMATION_STRING);
 				StaticPopup_Show("CONFIRM_DESTROY_DECOR", promptText, nil, popupData);
 			end);
+
+			local canDestroyEntry = C_HousingCatalog.CanDestroyEntry(self.entryID);
+			
+			local showDisabledTooltip = function(tooltip, elementDescription)
+				GameTooltip_SetTitle(tooltip, HOUSING_DECOR_STORAGE_ITEM_CANNOT_DESTROY);
+			end
+
 			destroySingleButtonDesc:SetEnabled(canDestroyEntry);
 			if not canDestroyEntry then
 				destroySingleButtonDesc:SetTooltip(showDisabledTooltip);

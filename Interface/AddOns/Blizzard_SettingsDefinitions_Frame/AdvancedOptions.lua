@@ -336,7 +336,9 @@ local function Register()
 
 	-- External Defensives
 	InterfaceOverrides.RunSettingsCallback(function()
-		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(EXTERNAL_DEFENSIVES_LABEL));
+		local _sectionTooltip = nil;
+		local sectionNewTagID = "EXTERNAL_DEFENSIVES_LABEL";
+		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(EXTERNAL_DEFENSIVES_LABEL, _sectionTooltip, sectionNewTagID));
 	end);
 
 	InterfaceOverrides.RunSettingsCallback(function()
@@ -346,7 +348,9 @@ local function Register()
 
 	-- Damage Meter
 	InterfaceOverrides.RunSettingsCallback(function()
-		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(DAMAGE_METER_LABEL));
+		local _sectionTooltip = nil;
+		local sectionNewTagID = "DAMAGE_METER_LABEL";
+		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(DAMAGE_METER_LABEL, _sectionTooltip, sectionNewTagID));
 	end);
 
 	InterfaceOverrides.RunSettingsCallback(function()
@@ -361,11 +365,25 @@ local function Register()
 		end
 
 		Settings.SetupCVarCheckbox(category, "damageMeterEnabled", ENABLE_DAMAGE_METER, TooltipFn);
+		--[[
+		-- Damage Meter reset on new instance checkbox
+		local function AutoResetTooltipFn()
+			local isAvailable, failureReason = C_DamageMeter.IsDamageMeterAvailable();
+			if isAvailable then
+				return AUTO_RESET_DAMAGE_METER_TOOLTIP;
+			else
+				return format("%s|n|n%s", AUTO_RESET_DAMAGE_METER_TOOLTIP, failureReason);
+			end
+		end
+
+		Settings.SetupCVarCheckbox(category, "damageMeterResetOnNewInstance", AUTO_RESET_DAMAGE_METER, AutoResetTooltipFn);
+		]]--
 	end);
 
 	-- Spell Diminishing Returns
 	if C_SpellDiminish.IsSystemSupported() then
-		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(SPELL_DIMINISH_SECTION_HEADER_LABEL));
+		local sectionNewTagID = "SPELL_DIMINISH_SECTION_HEADER_LABEL";
+		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(SPELL_DIMINISH_SECTION_HEADER_LABEL, SPELL_DIMINISH_SECTION_HEADER_TOOLTIP, sectionNewTagID));
 
 		local _pvpEnemiesEnabledSetting, pvpEnemiesEnabledInitializer = Settings.SetupCVarCheckbox(category, "spellDiminishPVPEnemiesEnabled", SPELL_DIMINISH_PVP_ENABLE_SETTING_LABEL, SPELL_DIMINISH_PVP_ENABLE_SETTING_TOOLTIP);
 

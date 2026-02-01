@@ -5,15 +5,22 @@ function ProfessionsCrafterOrderRewardMixin:SetReward(reward)
 	self.reward = reward;
 
 	if reward.itemLink then
-		self:SetItem(reward.itemLink);
-		local _, itemQuality, _ = self:GetItemInfo();
-		self:SetSlotQuality(self, itemQuality);
 		self.minDisplayCount = 1;
-		SetItemButtonCount(self, self.reward.count);
+		
+		self:SetItem(reward.itemLink);
+		local itemQuality = select(2, self:GetItemInfo());
+		self:SetSlotQuality(self, itemQuality);
+
+		self:SetItemButtonCount(self.reward.count);
 	elseif reward.currencyType then
-		self:SetCurrency(reward.currencyType);
+		self:SetItem(nil);
+
 		self.minDisplayCount = 0;
-		SetItemButtonCount(self, self.reward.count);
+
+		local reagent = Professions.CreateCurrencyReagent(reward.currencyType);
+		self:SetReagent(reagent, self.reward.count);
+
+		self:SetItemButtonCount(self.reward.count);
 	end
 
 	self:Show();
@@ -26,7 +33,12 @@ function ProfessionsCrafterOrderRewardMixin:OnEnter()
 	if itemLink then
 		GameTooltip:SetHyperlink(itemLink);
 	elseif self.reward.currencyType then
-		GameTooltip:SetCurrencyByID(self.reward.currencyType, self.reward.count);
+		local tooltipInfo = CreateBaseTooltipInfo("GetCurrencyByID", self.reward.currencyType, self.reward.count);
+		tooltipInfo.excludeLines = {
+				Enum.TooltipDataLineType.Blank,
+				Enum.TooltipDataLineType.CurrencyTotal,
+		};
+		GameTooltip:ProcessInfo(tooltipInfo);
 	end
 end
 
@@ -826,7 +838,8 @@ function ProfessionsCrafterOrderViewMixin:UpdateCreateButton()
 			enabled = false;
 
 			local smallIcon = true;
-			local markup = Professions.GetChatIconMarkupForQuality(qualityInfo, smallIcon);
+			local requiredQualityInfo = C_TradeSkillUI.GetRecipeItemQualityInfo(self.order.spellID, self.order.minQuality);
+			local markup = Professions.GetChatIconMarkupForQuality(requiredQualityInfo, smallIcon);
 			errorReason = PROFESSIONS_ORDER_HAS_MINIMUM_QUALITY_FMT:format(markup);
 		end
     end

@@ -10,11 +10,31 @@ CUF_MY_HEAL_PREDICTION_COLOR = CreateColor(11/255, 136/255, 105/255, 1);
 CUF_OTHER_HEAL_PREDICTION_COLOR = CreateColor(21/255, 89/255, 72/255, 1);
 CUF_OTHER_HEAL_PREDICTION_COLOR_MINI = CreateColor(2/255, 101/255, 18/255, 1);
 
+local NATIVE_UNIT_FRAME_HEIGHT = 36;
+local NATIVE_UNIT_FRAME_WIDTH = 72;
+local NATIVE_UNIT_FRAME_AURA_SIZE = 11;
+local NATIVE_UNIT_FRAME_AURA_SCALE_MIN = 0.5;
+local NATIVE_UNIT_FRAME_AURA_SCALE_MAX = 2;
+local CENTER_STATUS_ICON_SCALE = 2;
+local NATIVE_UNIT_FRAME_CENTER_STATUS_ICON_SIZE = NATIVE_UNIT_FRAME_AURA_SIZE * CENTER_STATUS_ICON_SCALE;
+
 local DispelOverlayOrientation = EnumUtil.MakeEnum(
 	"VerticalTopToBottom",
 	"VerticalBottomToTop",
 	"HorizontalLeftToRight"
 );
+
+local function CompactUnitFrame_CreateAuraPriorityTables(frame)
+	assertsafe(frame.debuffs == nil, "CompactUnitFrame_CreateAuraPriorityTables called multiple times on the same frame");
+
+	frame.debuffs = TableUtil.CreatePriorityTable(AuraUtil.UnitFrameDebuffComparator, TableUtil.Constants.AssociativePriorityTable);
+	frame.buffs = TableUtil.CreatePriorityTable(AuraUtil.DefaultAuraCompare, TableUtil.Constants.AssociativePriorityTable);
+	frame.bigDefensives = TableUtil.CreatePriorityTable(AuraUtil.BigDefensiveAuraCompare, TableUtil.Constants.AssociativePriorityTable);
+	frame.dispels = {};
+	for type, _ in pairs(AuraUtil.DispellableDebuffTypes) do
+		frame.dispels[type] = TableUtil.CreatePriorityTable(AuraUtil.DefaultAuraCompare, TableUtil.Constants.AssociativePriorityTable);
+	end
+end
 
 function CompactUnitFrame_OnLoad(self)
 	-- Names are required for concatenation of compact unit frame names. Search for
@@ -53,6 +73,7 @@ function CompactUnitFrame_OnLoad(self)
 	self.maxDebuffs = 0;
 	self.maxDispelDebuffs = 0;
 	CompactUnitFrame_SetOptionTable(self, OPTION_TABLE_NONE);
+	CompactUnitFrame_CreateAuraPriorityTables(self);
 
 	if not self.disableMouse then
 		CompactUnitFrame_SetUpClicks(self);
@@ -277,7 +298,7 @@ function CompactUnitFrame_SetUnit(frame, unit)
 		----NOTE: Make sure you also change the CompactAuraTemplate. (It has to be registered for clicks to be able to pass them through.)
 		local clickArgs =
 		{
-			"LeftButtonDown",
+			"AnyDown",
 			"RightButtonUp",
 		};
 		SecureUnitButton_OnLoad(frame, unit, CompactUnitFrame_OpenMenu, clickArgs);
@@ -696,6 +717,10 @@ function CompactUnitFrame_UpdateHealthColor(frame)
 	if frame.UpdateIsDead then
 		frame:UpdateIsDead();
 	end
+
+	if frame.background then
+		frame.background:SetVertexColor(CompactUnitFrame_GetOptionCustomHealthBarColorBG(frame):GetRGB());
+	end
 end
 
 function CompactUnitFrame_UpdateMaxHealth(frame)
@@ -844,6 +869,19 @@ function CompactUnitFrame_UpdateName(frame)
 		elseif ( CompactUnitFrame_IsTapDenied(frame) or (UnitIsDead(frame.unit) and not UnitIsPlayer(frame.unit)) ) then
 			-- Use grey if not a player and can't get tap on unit
 			frame.name:SetVertexColor(0.5, 0.5, 0.5);
+		elseif ( frame.colorNameWithClassColor ) then
+			-- Use class color when option is enabled
+			local _, class = UnitClass(frame.unit);
+			if ( class ) then
+				local classColor = RAID_CLASS_COLORS[class];
+				if ( classColor ) then
+					frame.name:SetVertexColor(classColor.r, classColor.g, classColor.b);
+				else
+					frame.name:SetVertexColor(1.0, 1.0, 1.0);
+				end
+			else
+				frame.name:SetVertexColor(1.0, 1.0, 1.0);
+			end
 		elseif ( frame.optionTable.colorNameBySelection ) then
 			if ( frame.optionTable.considerSelectionInCombatAsHostile and CompactUnitFrame_IsOnThreatListWithPlayer(frame.displayedUnit)  and not UnitIsFriend("player", frame.unit)  ) then
 				frame.name:SetVertexColor(1.0, 0.0, 0.0);
@@ -1608,16 +1646,10 @@ end
 
 --Other internal functions
 do
-	local function CompactUnitFrame_InitializePriorityTables(frame)
-		if frame.debuffs == nil then
-			frame.debuffs = TableUtil.CreatePriorityTable(AuraUtil.UnitFrameDebuffComparator, TableUtil.Constants.AssociativePriorityTable);
-			frame.buffs = TableUtil.CreatePriorityTable(AuraUtil.DefaultAuraCompare, TableUtil.Constants.AssociativePriorityTable);
-			frame.bigDefensives = TableUtil.CreatePriorityTable(AuraUtil.BigDefensiveAuraCompare, TableUtil.Constants.AssociativePriorityTable);
-			frame.dispels = {};
-			for type, _ in pairs(AuraUtil.DispellableDebuffTypes) do
-				frame.dispels[type] = TableUtil.CreatePriorityTable(AuraUtil.DefaultAuraCompare, TableUtil.Constants.AssociativePriorityTable);
-			end
-		else
+	local function CompactUnitFrame_ClearPriorityTables(frame)
+		assertsafe(frame.debuffs ~= nil, "Aura Priority tables not initialized for frame %s.", tostring(frame:GetDebugName()));
+
+		if frame.debuffs then
 			frame.debuffs:Clear();
 			frame.buffs:Clear();
 			frame.bigDefensives:Clear();
@@ -1711,7 +1743,7 @@ do
 		frame.buffsChanged = true;
 		frame.dispelsChanged = true;
 
-		CompactUnitFrame_InitializePriorityTables(frame);
+		CompactUnitFrame_ClearPriorityTables(frame);
 
 		local function HandleAura(aura)
 			CompactUnitFrame_ProcessAura(frame, aura, displayOnlyDispellableDebuffs, ignoreBuffs, ignoreDebuffs, ignoreDispelDebuffs, dispelIndicatorOption);
@@ -1793,9 +1825,7 @@ do
 			frame.dispelsChanged = false;
 
 			-- Preemptively hide the dispel overlay, it will be shown if there are any dispels to worry about.
-			if frame.DispelOverlay then
-				frame.DispelOverlay:Hide();
-			end
+			CompactUnitFrame_SetDispelOverlayAura(frame, nil);
 
 			local frameNum = 1;
 			local maxDispelDebuffs = frame.maxDispelDebuffs;
@@ -1961,6 +1991,19 @@ local dispelAtlases =
 	["Bleed"] = "RaidFrame-Icon-DebuffBleed",
 };
 
+local function UpdateFrameSizes(container, size)
+	for _, frame in pairs(container) do
+		frame:SetSize(size, size);
+
+		-- Need to store the baseSize used because some icons may scale later
+		frame.baseSize = size;
+	end
+end
+
+local function CompactUnitFrame_GetIconScale(frame)
+	return Clamp(EditModeManagerFrame:GetRaidFrameIconScale(frame.groupType, 1), NATIVE_UNIT_FRAME_AURA_SCALE_MIN, NATIVE_UNIT_FRAME_AURA_SCALE_MAX);
+end
+
 function CompactUnitFrame_UtilSetDispelDebuff(frame, dispellDebuffFrame, aura)
 	dispellDebuffFrame:Show();
 	dispellDebuffFrame.icon:SetAtlas(dispelAtlases[aura.dispelName]);
@@ -1968,28 +2011,33 @@ function CompactUnitFrame_UtilSetDispelDebuff(frame, dispellDebuffFrame, aura)
 
 	-- The behavior is that the last one set will "win"
 	if CompactUnitFrame_GetOptionShowDispelIndicatorOverlay(frame) then
-		frame.DispelOverlay:SetDispelType(aura.dispelName);
-		frame.DispelOverlay:Show();
+		CompactUnitFrame_SetDispelOverlayAura(frame, aura);
 	end
 end
 
-function CompactUnitFrame_UpdatePrivateAuras(frame)
+function CompactUnitFrame_UpdatePrivateAuras(frame, forceUpdate)
 	if not frame.PrivateAuraAnchors then
 		return;
 	end
 
+	if frame.privateAuraSize then
+		UpdateFrameSizes(frame.PrivateAuraAnchors, frame.privateAuraSize);
+	end
+
 	for _, auraAnchor in ipairs(frame.PrivateAuraAnchors) do
-		auraAnchor:SetUnit(frame.displayedUnit);
+		auraAnchor:SetBorderScale(frame.privateAuraBorderScale);
+		auraAnchor:SetUnit(frame.displayedUnit, forceUpdate);
 	end
 
 	local lastShownDebuff;
-	for i = 3, 1, -1 do
-		local debuff = frame["Debuff"..i];
+	for i = #frame.debuffFrames, 1, -1 do
+		local debuff = frame.debuffFrames[i];
 		if debuff:IsShown() then
 			lastShownDebuff = debuff;
 			break;
 		end
 	end
+
 	frame.PrivateAuraAnchor1:ClearAllPoints();
 	if lastShownDebuff then
 		frame.PrivateAuraAnchor1:SetPoint("BOTTOMLEFT", lastShownDebuff, "BOTTOMRIGHT", 0, 0);
@@ -2034,6 +2082,10 @@ end
 
 function CompactUnitFrame_GetOptionCustomHealthBarColors(frame)
 	return frame.optionTable.healthBarColor or COMPACT_UNIT_FRAME_FRIENDLY_HEALTH_COLOR;
+end
+
+function CompactUnitFrame_GetOptionCustomHealthBarColorBG(frame)
+	return frame.optionTable.healthBarColorBG or COMPACT_UNIT_FRAME_FRIENDLY_HEALTH_COLOR_BG;
 end
 
 function CompactUnitFrame_GetOptionHealthText(frame, options)
@@ -2235,19 +2287,6 @@ function CompactUnitFrame_UpdateTempMaxHPLoss(frame, value)
 end
 
 ------The default setup function
-local texCoords = {
-	["Raid-AggroFrame"] = {  0.00781250, 0.55468750, 0.00781250, 0.27343750 },
-	["Raid-TargetFrame"] = { 0.00781250, 0.55468750, 0.28906250, 0.55468750 },
-}
-
-local NATIVE_UNIT_FRAME_HEIGHT = 36;
-local NATIVE_UNIT_FRAME_WIDTH = 72;
-local NATIVE_UNIT_FRAME_AURA_SIZE = 11;
-local NATIVE_UNIT_FRAME_AURA_SCALE_MIN = 0.5;
-local NATIVE_UNIT_FRAME_AURA_SCALE_MAX = 2;
-local CENTER_STATUS_ICON_SCALE = 2;
-local NATIVE_UNIT_FRAME_CENTER_STATUS_ICON_SIZE = NATIVE_UNIT_FRAME_AURA_SIZE * CENTER_STATUS_ICON_SCALE;
-
 DefaultCompactUnitFrameSetupOptions = {
 	displayPowerBar = true,
 	displayOnlyHealerPowerBars = false,
@@ -2259,7 +2298,8 @@ local CompactUnitFrameLayoutTemplates = {
 			Layout = AnchorUtil.CreateGridLayout(GridLayoutMixin.Direction.BottomRightToTopLeft, 3),
 			Anchor = CreateAnchor("BOTTOMRIGHT", "placeholder", "BOTTOMRIGHT", 0, 0),
 			GetOffsets = function(frame)
-				return -3, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight;
+				local dispelOffset = frame.DispelOverlayAuraOffset or 0;
+				return -3 - dispelOffset, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight + dispelOffset;
 			end,
 		},
 
@@ -2268,7 +2308,8 @@ local CompactUnitFrameLayoutTemplates = {
 			Layout = AnchorUtil.CreateGridLayout(GridLayoutMixin.Direction.BottomLeftToTopRight, 3),
 			Anchor = CreateAnchor("BOTTOMLEFT", "placeholder", "BOTTOMLEFT", 0, 0),
 			GetOffsets = function(frame)
-				return 3, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight;
+				local dispelOffset = frame.DispelOverlayAuraOffset or 0;
+				return 3 + dispelOffset, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight + dispelOffset;
 			end,
 		},
 
@@ -2305,7 +2346,8 @@ local CompactUnitFrameLayoutTemplates = {
 			Layout = AnchorUtil.CreateGridLayout(GridLayoutMixin.Direction.TopRightToBottomLeft, 6),
 			Anchor = CreateAnchor("TOPRIGHT", "placeholder", "TOPRIGHT", -3, -3),
 			GetOffsets = function(frame)
-				return -3, -3;
+				local dispelOffset = frame.DispelOverlayAuraOffset or 0;
+				return -3 - dispelOffset, -3 - dispelOffset;
 			end,
 		},
 
@@ -2314,7 +2356,8 @@ local CompactUnitFrameLayoutTemplates = {
 			Layout = AnchorUtil.CreateGridLayout(GridLayoutMixin.Direction.BottomRightToTopLeft, 3),
 			Anchor = CreateAnchor("BOTTOMRIGHT", "placeholder", "BOTTOMRIGHT", 0, 0),
 			GetOffsets = function(frame)
-				return -3, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight;
+				local dispelOffset = frame.DispelOverlayAuraOffset or 0;
+				return -3 - dispelOffset, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight + dispelOffset;
 			end,
 		},
 
@@ -2353,7 +2396,8 @@ local CompactUnitFrameLayoutTemplates = {
 			Layout = AnchorUtil.CreateGridLayout(GridLayoutMixin.Direction.BottomRightToTopLeft, 3),
 			Anchor = CreateAnchor("BOTTOMRIGHT", "placeholder", "BOTTOMRIGHT", 0, 0),
 			GetOffsets = function(frame)
-				return -3, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight;
+				local dispelOffset = frame.DispelOverlayAuraOffset or 0;
+				return -3 - dispelOffset, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight + dispelOffset;
 			end,
 		},
 
@@ -2362,7 +2406,8 @@ local CompactUnitFrameLayoutTemplates = {
 			Layout = AnchorUtil.CreateGridLayout(GridLayoutMixin.Direction.BottomLeftToTopRight, 3),
 			Anchor = CreateAnchor("BOTTOMLEFT", "placeholder", "BOTTOMLEFT", 0, 0),
 			GetOffsets = function(frame)
-				return 3, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight;
+				local dispelOffset = frame.DispelOverlayAuraOffset or 0;
+				return 3 + dispelOffset, CUF_AURA_BOTTOM_OFFSET + frame.powerBarUsedHeight + dispelOffset;
 			end,
 		},
 
@@ -2429,19 +2474,35 @@ local function CompactUnitFrameLayoutTemplates_LayoutFrameElement(frame, element
 	layoutData.LayoutFunction(frame);
 end
 
-local function UpdateFrameSizes(container, size)
-	for _, frame in pairs(container) do
-		frame:SetSize(size, size);
-
-		-- Need to store the baseSize used because some icons may scale later
-		frame.baseSize = size;
-	end
-end
-
 local function CompactUnitFrameLayout_SetupAbsorbElement(element, ...)
 	if element then
 		element:ClearAllPoints();
 		SetTextureWithAddressModeOptions(element, ...);
+	end
+end
+
+local function CompactUnitFrame_UpdateAuraFrameLayout(frame, auraOrganizationType)
+	auraOrganizationType = auraOrganizationType or EditModeManagerFrame:GetRaidFrameAuraOrganizationType(frame.groupType);
+	CompactUnitFrameLayoutTemplates_LayoutContainer(frame, frame.buffFrames, auraOrganizationType, "Buffs");
+	CompactUnitFrameLayoutTemplates_LayoutContainer(frame, frame.debuffFrames, auraOrganizationType, "Debuffs");
+	CompactUnitFrameLayoutTemplates_LayoutContainer(frame, frame.dispelDebuffFrames, auraOrganizationType, "Dispel");
+end
+
+function CompactUnitFrame_SetDispelOverlayAura(frame, aura)
+	if frame.DispelOverlay then
+		local shown = aura and aura.dispelName;
+		if shown ~= frame.DispelOverlay:IsShown() then
+			if shown then
+				frame.DispelOverlay:SetDispelType(aura.dispelName);
+				frame.DispelOverlay:Show();
+				frame.DispelOverlayAuraOffset = 2;
+			else
+				frame.DispelOverlay:Hide();
+				frame.DispelOverlayAuraOffset = 0;
+			end
+
+			CompactUnitFrame_UpdateAuraFrameLayout(frame);
+		end
 	end
 end
 
@@ -2454,7 +2515,7 @@ function DefaultCompactUnitFrameSetup(frame)
 	local auraOrganizationType = EditModeManagerFrame:GetRaidFrameAuraOrganizationType(frame.groupType);
 
 	-- Icon Scale affects the sizes of the "gameplay" type icons like auras and available dispel types.
-	local iconScale = Clamp(EditModeManagerFrame:GetRaidFrameIconScale(frame.groupType, 1), NATIVE_UNIT_FRAME_AURA_SCALE_MIN, NATIVE_UNIT_FRAME_AURA_SCALE_MAX);
+	local iconScale = CompactUnitFrame_GetIconScale(frame);
 	local auraSize = NATIVE_UNIT_FRAME_AURA_SIZE * iconScale;
 
 	-- Component Scale affects the sizes of the status text, name, ready check, and center status (summon/rez/LoS...but NOT THE BIG DEFENSIVE)
@@ -2554,11 +2615,12 @@ function DefaultCompactUnitFrameSetup(frame)
 	UpdateFrameSizes(frame.buffFrames, auraSize);
 	UpdateFrameSizes(frame.debuffFrames, auraSize);
 	UpdateFrameSizes(frame.dispelDebuffFrames, 14);
-	UpdateFrameSizes(frame.PrivateAuraAnchors, auraSize * BOSS_DEBUFF_SCALE_INCREASE);
 
-	CompactUnitFrameLayoutTemplates_LayoutContainer(frame, frame.buffFrames, auraOrganizationType, "Buffs");
-	CompactUnitFrameLayoutTemplates_LayoutContainer(frame, frame.debuffFrames, auraOrganizationType, "Debuffs");
-	CompactUnitFrameLayoutTemplates_LayoutContainer(frame, frame.dispelDebuffFrames, auraOrganizationType, "Dispel");
+	local forceUpdatePrivateAuras = true;
+	frame.privateAuraBorderScale = iconScale;
+	frame.privateAuraSize = auraSize; -- Search tag: * BOSS_DEBUFF_SCALE_INCREASE
+	CompactUnitFrame_UpdatePrivateAuras(frame, forceUpdatePrivateAuras);
+	CompactUnitFrame_UpdateAuraFrameLayout(frame, auraOrganizationType);
 
 	local centerStatusIconSize = NATIVE_UNIT_FRAME_CENTER_STATUS_ICON_SIZE * componentScale;
 	frame.centerStatusIcon:SetSize(centerStatusIconSize, centerStatusIconSize);
@@ -2579,6 +2641,7 @@ local nativeMiniUnitFrameHeight = 18;
 local nativeMiniUnitFrameHeightRatio = nativeMiniUnitFrameHeight / NATIVE_UNIT_FRAME_HEIGHT;
 
 function DefaultCompactMiniFrameSetup(frame)
+	frame.powerBarUsedHeight = 0;
 	frame:SetAlpha(1);
 	local frameWidth = EditModeManagerFrame:GetRaidFrameWidth(frame.groupType, NATIVE_UNIT_FRAME_WIDTH);
 	local frameHeight = EditModeManagerFrame:GetRaidFrameHeight(frame.groupType, NATIVE_UNIT_FRAME_HEIGHT) * nativeMiniUnitFrameHeightRatio;
@@ -2634,8 +2697,12 @@ end
 
 CompactUnitPrivateAuraAnchorMixin = {};
 
-function CompactUnitPrivateAuraAnchorMixin:SetUnit(unit)
-	if unit == self.unit then
+function CompactUnitPrivateAuraAnchorMixin:SetBorderScale(borderScale)
+	self.borderScale = borderScale;
+end
+
+function CompactUnitPrivateAuraAnchorMixin:SetUnit(unit, force)
+	if unit == self.unit and not force then
 		return;
 	end
 	self.unit = unit;
@@ -2666,6 +2733,7 @@ function CompactUnitPrivateAuraAnchorMixin:SetUnit(unit)
 			iconAnchor = iconAnchor,
 			iconWidth = self:GetWidth(),
 			iconHeight = self:GetHeight(),
+			borderScale = self.borderScale,
 		};
 		privateAnchorArgs.durationAnchor = nil;
 

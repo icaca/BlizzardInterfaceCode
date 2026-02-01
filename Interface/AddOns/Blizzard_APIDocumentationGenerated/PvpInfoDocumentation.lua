@@ -659,6 +659,7 @@ local PvpInfo =
 		{
 			Name = "GetScoreInfo",
 			Type = "Function",
+			SecretInActivePvPMatch = true,
 			SecretArguments = "AllowedWhenUntainted",
 
 			Arguments =
@@ -674,6 +675,7 @@ local PvpInfo =
 		{
 			Name = "GetScoreInfoByPlayerGuid",
 			Type = "Function",
+			SecretInActivePvPMatch = true,
 			SecretArguments = "AllowedWhenUntainted",
 
 			Arguments =
@@ -1070,6 +1072,10 @@ local PvpInfo =
 			{
 				{ Name = "isSpecialBrawl", Type = "bool", Nilable = false, Default = false },
 			},
+		},
+		{
+			Name = "JoinRandomTrainingGround",
+			Type = "Function",
 		},
 		{
 			Name = "JoinRatedBGBlitz",
@@ -1768,12 +1774,12 @@ local PvpInfo =
 			Type = "Structure",
 			Fields =
 			{
-				{ Name = "pvpStatID", Type = "number", Nilable = false },
+				{ Name = "pvpStatID", Type = "number", Nilable = false, NeverSecret = true },
 				{ Name = "pvpStatValue", Type = "number", Nilable = false },
-				{ Name = "orderIndex", Type = "number", Nilable = false },
-				{ Name = "name", Type = "string", Nilable = false },
-				{ Name = "tooltip", Type = "string", Nilable = false },
-				{ Name = "iconName", Type = "string", Nilable = false },
+				{ Name = "orderIndex", Type = "number", Nilable = false, NeverSecret = true },
+				{ Name = "name", Type = "string", Nilable = false, NeverSecret = true },
+				{ Name = "tooltip", Type = "string", Nilable = false, NeverSecret = true },
+				{ Name = "iconName", Type = "string", Nilable = false, NeverSecret = true },
 			},
 		},
 		{
